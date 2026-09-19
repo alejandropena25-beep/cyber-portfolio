@@ -1,14 +1,18 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, effect, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { Meta, Title } from '@angular/platform-browser';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { projects } from './projects.data';
+import { map, switchMap } from 'rxjs';
+import { PortfolioApiService } from '../data/portfolio-api.service';
 import { NotFound } from './not-found';
 
 @Component({
   selector: 'app-project-detail',
   imports: [RouterLink, NotFound],
   template: `
-    @if (project(); as project) {
+    @if (project() === undefined) {
+      <p class="loading" role="status">Cargando proyecto…</p>
+    } @else if (project(); as project) {
       <a class="back-link" routerLink="/projects">← Todos los proyectos</a>
 
       <article class="project-detail">
@@ -207,11 +211,25 @@ import { NotFound } from './not-found';
 })
 export class ProjectDetail {
   private readonly route = inject(ActivatedRoute);
-  private readonly params = toSignal(this.route.paramMap, {
-    initialValue: this.route.snapshot.paramMap,
-  });
+  private readonly portfolioApi = inject(PortfolioApiService);
+  private readonly title = inject(Title);
+  private readonly meta = inject(Meta);
 
-  protected readonly project = computed(() =>
-    projects.find((project) => project.slug === this.params().get('slug')),
+  protected readonly project = toSignal(
+    this.route.paramMap.pipe(
+      map((params) => params.get('slug') ?? ''),
+      switchMap((slug) => this.portfolioApi.getProject(slug)),
+    ),
   );
+
+  constructor() {
+    effect(() => {
+      const project = this.project();
+
+      if (project) {
+        this.title.setTitle(`${project.cardTitle} | Alejandro Peña`);
+        this.meta.updateTag({ name: 'description', content: project.summary });
+      }
+    });
+  }
 }

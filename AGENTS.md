@@ -18,9 +18,9 @@ decision during a job interview.
 
 ## Current Phase
 
-CURRENT PHASE: Phase 2 — Portfolio Content.
+CURRENT PHASE: Phase 3 — NestJS Backend.
 
-Phase 1 Angular baseline is complete.
+Phase 1 Angular baseline and Phase 2 portfolio content are complete.
 
 Existing frontend:
 
@@ -38,27 +38,34 @@ Existing frontend:
 - Contact
 - 404
 - Responsive design
-- Typed local project data
+- Typed API-backed project and profile data
 - Passing build and tests
 
 Current priorities:
 
-1. Replace placeholder content.
-2. Add real professional information.
-3. Add real projects.
-4. Add real technologies and skills.
-5. Add real professional links when provided.
-6. Preserve the current visual direction.
+1. Maintain the NestJS public REST API.
+2. Serve project and profile content from the backend.
+3. Preserve Angular SSR / prerendering.
+4. Keep frontend and backend tests passing.
+5. Document the frontend / API boundary.
 
-DO NOT start NestJS or later phases yet.
+Current backend:
+
+- NestJS 12
+- Strict TypeScript
+- In-memory typed content
+- Health, projects and profile endpoints
+- Focused endpoint tests
+
+DO NOT start PostgreSQL or later phases yet.
 
 ## Roadmap
 
 Follow this exact order:
 
 1. Angular Frontend — completed baseline
-2. Portfolio Content — current
-3. NestJS Backend
+2. Portfolio Content — completed
+3. NestJS Backend — current
 4. PostgreSQL
 5. Administration / Authentication
 6. Docker / Docker Compose
@@ -134,18 +141,18 @@ Possible later additions:
 Current relevant structure:
 
 cyber-portfolio/
+├── backend/
+├── docs/
 ├── frontend/
 ├── AGENTS.md
 └── README.md
 
 Future directories may include:
 
-- backend/
 - docker/
 - kubernetes/
 - security/
 - monitoring/
-- docs/
 - .github/workflows/
 
 Do not create future directories until their phase requires them.

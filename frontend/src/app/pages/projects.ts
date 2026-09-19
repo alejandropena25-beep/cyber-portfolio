@@ -1,6 +1,9 @@
-import { Component, computed, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
-import { categories, ProjectCategory, projects } from './projects.data';
+import { tap } from 'rxjs';
+import { PortfolioApiService } from '../data/portfolio-api.service';
+import { categories, ProjectCategory } from '../data/portfolio.models';
 
 @Component({
   selector: 'app-projects',
@@ -57,18 +60,31 @@ import { categories, ProjectCategory, projects } from './projects.data';
           </article>
         }
       </div>
-    } @else {
+    } @else if (loaded()) {
       <p class="empty-state">
         Todavía no hay un proyecto publicado en esta categoría. El filtro se mantiene para futuros
         proyectos reales.
       </p>
+    } @else {
+      <p class="loading" role="status">Cargando proyectos…</p>
     }
   `,
 })
 export class Projects {
+  private readonly portfolioApi = inject(PortfolioApiService);
+
   protected readonly categories = categories;
   protected readonly selected = signal<ProjectCategory | null>(null);
+  protected readonly loaded = signal(false);
+  protected readonly projects = toSignal(
+    this.portfolioApi.getProjects().pipe(tap(() => this.loaded.set(true))),
+    {
+      initialValue: [],
+    },
+  );
   protected readonly visibleProjects = computed(() =>
-    projects.filter((project) => this.selected() === null || project.category === this.selected()),
+    this.projects().filter(
+      (project) => this.selected() === null || project.category === this.selected(),
+    ),
   );
 }

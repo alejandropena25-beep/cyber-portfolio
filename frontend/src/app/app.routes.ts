@@ -1,17 +1,4 @@
-import { ActivatedRouteSnapshot, ResolveFn, Routes } from '@angular/router';
-import { projects } from './pages/projects.data';
-
-const projectTitle = (route: ActivatedRouteSnapshot): string => {
-  const project = projects.find(({ slug }) => slug === route.paramMap.get('slug'));
-  return project
-    ? `${project.cardTitle} | Alejandro Peña`
-    : 'Proyecto no encontrado | Alejandro Peña';
-};
-
-const projectDescription: ResolveFn<string> = (route) => {
-  const project = projects.find(({ slug }) => slug === route.paramMap.get('slug'));
-  return project?.summary ?? 'El proyecto solicitado no existe en el portfolio de Alejandro Peña.';
-};
+import { Routes } from '@angular/router';
 
 export const routes: Routes = [
   {
@@ -22,7 +9,7 @@ export const routes: Routes = [
       description:
         'Portfolio profesional de Alejandro Peña: desarrollo web, laboratorios de ciberseguridad y evolución hacia DevOps y DevSecOps.',
     },
-    loadComponent: () => import('./pages/home').then((m) => m.Home),
+    loadComponent: () => import('./pages/home').then((module) => module.Home),
   },
   {
     path: 'projects',
@@ -31,13 +18,15 @@ export const routes: Routes = [
       description:
         'Proyectos de Alejandro Peña sobre seguridad web, monitorización, seguridad móvil e infraestructura del portfolio.',
     },
-    loadComponent: () => import('./pages/projects').then((m) => m.Projects),
+    loadComponent: () => import('./pages/projects').then((module) => module.Projects),
   },
   {
     path: 'projects/:slug',
-    title: projectTitle,
-    resolve: { description: projectDescription },
-    loadComponent: () => import('./pages/project-detail').then((m) => m.ProjectDetail),
+    title: 'Proyecto | Alejandro Peña',
+    data: {
+      description: 'Detalle de un proyecto técnico del portfolio de Alejandro Peña.',
+    },
+    loadComponent: () => import('./pages/project-detail').then((module) => module.ProjectDetail),
   },
   {
     path: 'about',
@@ -46,7 +35,7 @@ export const routes: Routes = [
       description:
         'Perfil, experiencia profesional, formación y orientación hacia la ciberseguridad de Alejandro Peña.',
     },
-    loadComponent: () => import('./pages/about').then((m) => m.About),
+    loadComponent: () => import('./pages/about').then((module) => module.About),
   },
   {
     path: 'contact',
@@ -54,12 +43,12 @@ export const routes: Routes = [
     data: {
       description: 'Repositorio público y vías de contacto confirmadas de Alejandro Peña.',
     },
-    loadComponent: () => import('./pages/contact').then((m) => m.Contact),
+    loadComponent: () => import('./pages/contact').then((module) => module.Contact),
   },
   {
     path: '**',
     title: 'Página no encontrada | Alejandro Peña',
     data: { description: 'La página solicitada no existe en el portfolio de Alejandro Peña.' },
-    loadComponent: () => import('./pages/not-found').then((m) => m.NotFound),
+    loadComponent: () => import('./pages/not-found').then((module) => module.NotFound),
   },
 ];

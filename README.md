@@ -2,20 +2,37 @@
 
 Portfolio profesional de Alejandro Peña y proyecto técnico incremental centrado en desarrollo web, ciberseguridad y evolución hacia DevOps / DevSecOps.
 
-La aplicación presenta experiencia profesional, formación y laboratorios académicos con una separación explícita entre trabajo realizado, resultados confirmados y documentación todavía en revisión.
+La plataforma utiliza Angular para la experiencia pública y una API NestJS para servir el perfil profesional y los proyectos confirmados.
 
 ## Estado actual
 
-El proyecto se encuentra en **Phase 2 — Portfolio Content**. La base del frontend Angular está completa y el contenido provisional ha sido sustituido por información profesional y proyectos reales.
+El proyecto se encuentra en **Phase 3 — NestJS Backend**.
 
-Proyectos publicados:
+Completado:
 
-- Protección de WordPress con BunkerWeb WAF.
-- Mini-SOC con Snort y Elastic/Kibana.
-- Análisis de InsecureBankv2 con MobSF y OWASP MSTG.
-- Secure Portfolio Infrastructure.
+- Phase 1: base del frontend Angular.
+- Phase 2: contenido profesional y proyectos reales.
+- Phase 3: API REST pública e integración de Angular con el backend.
+
+PostgreSQL, autenticación, Docker y el resto de la infraestructura continúan planificados para fases posteriores.
+
+## Arquitectura local
+
+```text
+Navegador
+   │
+   ├── http://localhost:4200 ── Angular
+   │                              │
+   │                              └── /api (proxy de desarrollo)
+   │
+   └────────────────────────── http://localhost:3000/api ── NestJS
+```
+
+NestJS mantiene en memoria la fuente de contenido público. Angular consume esa API tanto en navegador como durante SSR y prerenderizado.
 
 ## Stack implementado
+
+Frontend:
 
 - Angular 22.
 - TypeScript.
@@ -25,34 +42,94 @@ Proyectos publicados:
 - SSR y prerenderizado.
 - Vitest.
 
+Backend:
+
+- NestJS 12.
+- TypeScript estricto.
+- REST API.
+- Fuente de datos local tipada.
+- Jest y Supertest para pruebas HTTP.
+
+## Instalación
+
+Instala las dependencias de cada aplicación:
+
+```bash
+cd backend
+npm install
+
+cd ../frontend
+npm install
+```
+
 ## Desarrollo local
 
-Requisitos: Node.js compatible con Angular 22 y npm.
+Inicia la API en una terminal:
+
+```bash
+cd backend
+npm run start:dev
+```
+
+La API estará disponible en `http://localhost:3000/api`.
+
+Inicia Angular en otra terminal:
 
 ```bash
 cd frontend
-npm install
 npm start
 ```
 
-La aplicación estará disponible por defecto en `http://localhost:4200`.
+La aplicación estará disponible en `http://localhost:4200`. El servidor de desarrollo redirige `/api` hacia NestJS.
 
-## Validación
+## API pública
+
+| Método | Ruta                  | Descripción                            |
+| ------ | --------------------- | -------------------------------------- |
+| GET    | `/api/health`         | Estado mínimo de disponibilidad.       |
+| GET    | `/api/projects`       | Resúmenes de los proyectos públicos.   |
+| GET    | `/api/projects/:slug` | Contenido completo de un proyecto.     |
+| GET    | `/api/profile`        | Perfil profesional público confirmado. |
+
+Un `slug` de proyecto inexistente devuelve HTTP 404. La API no expone endpoints de escritura, administración o autenticación.
+
+## Build y tests
+
+Backend:
+
+```bash
+cd backend
+npm run build
+npm test
+```
+
+Frontend:
 
 ```bash
 cd frontend
-npm run build
 npm test -- --watch=false
+npm run build
 ```
 
-El build genera la aplicación de navegador, el servidor SSR y las rutas prerenderizadas.
+El backend debe estar ejecutándose en `127.0.0.1:3000` durante el build del frontend. El prerender consulta la API para obtener los proyectos y generar sus rutas estáticas.
+
+## Configuración de la API
+
+Angular centraliza las URLs en `frontend/src/environments/environment.ts`:
+
+- Navegador: `/api`, resuelto por el proxy durante el desarrollo.
+- SSR / prerender: `http://127.0.0.1:3000/api`.
+
+La URL del entorno de producción se decidirá cuando se defina la topología de despliegue. No hay credenciales ni secretos en esta configuración.
+
+CORS acepta el origen local de Angular, `http://localhost:4200`, y la API desactiva la cabecera `X-Powered-By`.
 
 ## Roadmap resumido
 
 1. Angular Frontend — completado.
-2. Portfolio Content — fase actual.
-3. NestJS Backend.
-4. PostgreSQL.
+2. Portfolio Content — completado.
+3. NestJS Backend — fase actual implementada.
+4. PostgreSQL — siguiente fase planificada.
 5. Administración y autenticación.
 6. Docker / Docker Compose.
 7. CI/CD con GitHub Actions.
@@ -64,7 +141,12 @@ El build genera la aplicación de navegador, el servidor SSR y las rutas prerend
 13. Respuesta automatizada controlada.
 14. Producción.
 
-Las tecnologías de las fases futuras describen el roadmap. No deben interpretarse como componentes ya implementados.
+Las tecnologías futuras no forman parte todavía de la implementación.
+
+## Documentación
+
+- [Arquitectura actual](docs/ARCHITECTURE.md)
+- [Plan de Phase 4](docs/PHASE-4-DATABASE-PLAN.md)
 
 ## Repositorio
 

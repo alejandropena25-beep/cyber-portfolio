@@ -1,9 +1,13 @@
-﻿import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
+import { PortfolioApiService } from '../data/portfolio-api.service';
+
 @Component({
   selector: 'app-contact',
   imports: [RouterLink],
-  template: `<header class="page-header">
+  template: `
+    <header class="page-header">
       <p class="eyebrow">Contacto</p>
       <h1>Conecta conmigo.</h1>
       <p class="lead">
@@ -15,15 +19,17 @@ import { RouterLink } from '@angular/router';
       <h2>GitHub</h2>
       <p>LinkedIn y el currículum se incorporarán cuando sus enlaces públicos estén confirmados.</p>
       <div class="actions">
-        <a
-          class="button"
-          href="https://github.com/alejandropena25-beep/cyber-portfolio"
-          target="_blank"
-          rel="noopener noreferrer"
-          >Ver repositorio en GitHub <span aria-hidden="true">↗</span></a
-        >
+        @if (profile(); as profile) {
+          <a class="button" [href]="profile.links.github" target="_blank" rel="noopener noreferrer"
+            >Ver repositorio en GitHub <span aria-hidden="true">↗</span></a
+          >
+        }
         <a class="button secondary" routerLink="/projects">Ver proyectos</a>
       </div>
-    </section>`,
+    </section>
+  `,
 })
-export class Contact {}
+export class Contact {
+  private readonly portfolioApi = inject(PortfolioApiService);
+  protected readonly profile = toSignal(this.portfolioApi.getProfile());
+}

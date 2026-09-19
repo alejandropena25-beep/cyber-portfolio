@@ -1,36 +1,37 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
-import { projects } from './projects.data';
+import { PortfolioApiService } from '../data/portfolio-api.service';
 
 @Component({
   selector: 'app-home',
   imports: [RouterLink],
   template: `
-    <section class="hero" aria-labelledby="home-title">
-      <p class="eyebrow">Alejandro Peña · Desarrollo web y ciberseguridad</p>
-      <h1 id="home-title">
-        Desarrollo software con una mirada orientada a la <span class="accent">seguridad.</span>
-      </h1>
-      <p class="lead">
-        Soy desarrollador web con formación en Desarrollo de Aplicaciones Web y ciberseguridad.
-        Actualmente curso Ingeniería Informática en la Universidad de Sevilla.
-      </p>
-      <p class="hero-support">
-        La ciberseguridad es el foco principal de este portfolio, con el desarrollo como base
-        profesional y DevOps / DevSecOps como área de evolución.
-      </p>
-      <div class="actions">
-        <a class="button" routerLink="/projects">Ver proyectos <span aria-hidden="true">↗</span></a>
-        <a class="button secondary" routerLink="/about">Sobre mí</a>
-        <a
-          class="button secondary"
-          href="https://github.com/alejandropena25-beep/cyber-portfolio"
-          target="_blank"
-          rel="noopener noreferrer"
-          >Ver GitHub <span aria-hidden="true">↗</span></a
-        >
-      </div>
-    </section>
+    @if (profile(); as profile) {
+      <section class="hero" aria-labelledby="home-title">
+        <p class="eyebrow">{{ profile.name }} · Desarrollo web y ciberseguridad</p>
+        <h1 id="home-title">
+          Desarrollo software con una mirada orientada a <span class="accent">la seguridad.</span>
+        </h1>
+        <p class="lead">{{ profile.introduction }}</p>
+        <p class="hero-support">{{ profile.professionalFocus }}</p>
+        <div class="actions">
+          <a class="button" routerLink="/projects"
+            >Ver proyectos <span aria-hidden="true">↗</span></a
+          >
+          <a class="button secondary" routerLink="/about">Sobre mí</a>
+          <a
+            class="button secondary"
+            [href]="profile.links.github"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Ver GitHub <span aria-hidden="true">↗</span></a
+          >
+        </div>
+      </section>
+    } @else {
+      <p class="loading" role="status">Cargando perfil…</p>
+    }
 
     <section class="section" aria-labelledby="areas-title">
       <p class="eyebrow">Perfil</p>
@@ -71,24 +72,33 @@ import { projects } from './projects.data';
         </div>
         <a routerLink="/projects">Ver todos los proyectos <span aria-hidden="true">→</span></a>
       </div>
-      <div class="project-grid">
-        @for (project of projects; track project.slug) {
-          <article class="card project-card">
-            <div class="project-meta">
-              <span class="tag">{{ project.category }}</span>
-              <span class="status">{{ project.status }}</span>
-            </div>
-            <h3>
-              <a [routerLink]="['/projects', project.slug]">{{ project.cardTitle }}</a>
-            </h3>
-            <p>{{ project.summary }}</p>
-            <span class="card-link" aria-hidden="true">Ver proyecto →</span>
-          </article>
-        }
-      </div>
+      @if (projects().length > 0) {
+        <div class="project-grid">
+          @for (project of projects(); track project.slug) {
+            <article class="card project-card">
+              <div class="project-meta">
+                <span class="tag">{{ project.category }}</span>
+                <span class="status">{{ project.status }}</span>
+              </div>
+              <h3>
+                <a [routerLink]="['/projects', project.slug]">{{ project.cardTitle }}</a>
+              </h3>
+              <p>{{ project.summary }}</p>
+              <span class="card-link" aria-hidden="true">Ver proyecto →</span>
+            </article>
+          }
+        </div>
+      } @else {
+        <p class="loading" role="status">Cargando proyectos…</p>
+      }
     </section>
   `,
 })
 export class Home {
-  protected readonly projects = projects;
+  private readonly portfolioApi = inject(PortfolioApiService);
+
+  protected readonly profile = toSignal(this.portfolioApi.getProfile());
+  protected readonly projects = toSignal(this.portfolioApi.getProjects(), {
+    initialValue: [],
+  });
 }
