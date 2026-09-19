@@ -3,17 +3,27 @@ import { RouterLink } from '@angular/router';
 @Component({
   selector: 'app-contact',
   imports: [RouterLink],
-  template: `<p class="eyebrow">Contacto</p>
-    <h1>Una conversación<br />puede ser el inicio.</h1>
-    <p class="lead">Un espacio para conectar y compartir ideas sobre tecnología.</p>
-    <section class="card section detail">
-      <h2>Canales de contacto</h2>
-      <p>
-        Los enlaces profesionales y el correo de contacto se añadirán en la Fase 2, junto con el
-        contenido personal del portfolio.
+  template: `<header class="page-header">
+      <p class="eyebrow">Contacto</p>
+      <h1>Conecta conmigo.</h1>
+      <p class="lead">
+        Puedes consultar el código y la evolución de este portfolio en su repositorio público.
       </p>
-      <p>Por ahora, esta página no recoge ni envía mensajes.</p>
-      <a routerLink="/projects">Ver los proyectos de ejemplo →</a>
+    </header>
+    <section class="card section callout">
+      <p class="card-kicker">Canal público confirmado</p>
+      <h2>GitHub</h2>
+      <p>LinkedIn y el currículum se incorporarán cuando sus enlaces públicos estén confirmados.</p>
+      <div class="actions">
+        <a
+          class="button"
+          href="https://github.com/alejandropena25-beep/cyber-portfolio"
+          target="_blank"
+          rel="noopener noreferrer"
+          >Ver repositorio en GitHub <span aria-hidden="true">↗</span></a
+        >
+        <a class="button secondary" routerLink="/projects">Ver proyectos</a>
+      </div>
     </section>`,
 })
 export class Contact {}

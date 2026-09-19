@@ -5,8 +5,8 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
   imports: [RouterLink, RouterLinkActive],
   template: ` <header class="site-header">
     <div class="container header-content">
-      <a class="brand" routerLink="/" aria-label="Cyber Portfolio, inicio"
-        ><span aria-hidden="true">&lt;/&gt;</span> Cyber Portfolio</a
+      <a class="brand" routerLink="/" aria-label="Alejandro Peña, inicio"
+        ><span aria-hidden="true">&lt;/&gt;</span> Alejandro Peña</a
       >
       <nav aria-label="Navegación principal">
         <a

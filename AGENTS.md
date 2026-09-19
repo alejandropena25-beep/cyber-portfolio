@@ -16,7 +16,6 @@ full-stack, containerized, monitored and secured platform.
 The owner must be able to explain and defend every major technical
 decision during a job interview.
 
-
 ## Current Phase
 
 CURRENT PHASE: Phase 2 — Portfolio Content.
@@ -53,7 +52,6 @@ Current priorities:
 
 DO NOT start NestJS or later phases yet.
 
-
 ## Roadmap
 
 Follow this exact order:
@@ -75,10 +73,10 @@ Follow this exact order:
 
 Never introduce technology from a future phase unless explicitly requested.
 
-
 ## Planned Stack
 
 Frontend:
+
 - Angular 22
 - TypeScript
 - SCSS
@@ -86,14 +84,17 @@ Frontend:
 - SSR / prerendering
 
 Backend:
+
 - NestJS
 - TypeScript
 - REST API
 
 Database:
+
 - PostgreSQL
 
 Infrastructure:
+
 - Docker
 - Docker Compose
 - GitHub Actions
@@ -102,6 +103,7 @@ Infrastructure:
 - Cloudflare where appropriate
 
 Security:
+
 - HTTPS / TLS
 - Secure HTTP headers
 - CSP
@@ -118,13 +120,14 @@ Security:
 - Wazuh SIEM
 
 Observability:
+
 - Prometheus
 - Grafana
 
 Possible later additions:
+
 - Loki
 - OpenTelemetry
-
 
 ## Repository
 
@@ -147,7 +150,6 @@ Future directories may include:
 
 Do not create future directories until their phase requires them.
 
-
 ## Angular Application
 
 Public routes:
@@ -163,7 +165,6 @@ Prefer feature-oriented organization.
 
 Do not create empty abstraction layers only to make the architecture look complex.
 
-
 ## Initial Real Projects
 
 Initial portfolio projects:
@@ -171,6 +172,7 @@ Initial portfolio projects:
 ### BunkerWeb WAF
 
 Potential topics:
+
 - BunkerWeb
 - Docker
 - WordPress
@@ -181,6 +183,7 @@ Potential topics:
 ### SOC / Snort / ELK
 
 Potential topics:
+
 - Snort
 - Elastic / ELK
 - IDS
@@ -191,6 +194,7 @@ Potential topics:
 ### Mobile Security Lab
 
 Potential topics:
+
 - MobSF
 - MSTG
 - Android
@@ -217,7 +221,6 @@ Angular
 Never invent missing project information.
 
 Ask the owner when required information is unavailable.
-
 
 ## Project Content Rules
 
@@ -251,7 +254,6 @@ Never fabricate:
 - Dates
 - Production usage
 
-
 ## Engineering Rules
 
 Use:
@@ -275,7 +277,6 @@ Avoid:
 - Unnecessary dependencies
 - Complexity without technical benefit
 
-
 ## Dependencies
 
 Before adding a dependency:
@@ -286,7 +287,6 @@ Before adding a dependency:
 4. Consider security implications.
 
 Do not install packages only because they are popular.
-
 
 ## UI Direction
 
@@ -309,7 +309,6 @@ Avoid cliché hacker aesthetics such as:
 
 The portfolio should appeal to recruiters and engineers.
 
-
 ## Security
 
 This will be a public repository and public website.
@@ -327,7 +326,6 @@ Never expose:
 - Private infrastructure information
 
 Sanitize logs and screenshots before publication.
-
 
 ## Git
 
@@ -353,7 +351,6 @@ Never automatically:
 
 unless explicitly requested by the owner.
 
-
 ## Validation
 
 After significant code changes:
@@ -367,11 +364,10 @@ After significant code changes:
 For the current Angular application, normally validate with:
 
 npm run build
-npm test -- --run
+npm test -- --watch=false
 
 If a command cannot run because of sandbox restrictions, report that
 instead of claiming success.
-
 
 ## Agent Workflow
 
@@ -403,7 +399,6 @@ After implementation:
 - Report warnings and errors.
 - Do not commit automatically.
 
-
 ## Learning Requirement
 
 This is also a learning project.
@@ -421,7 +416,6 @@ Do not generate large unexplained implementations.
 The owner should be able to explain every important part during a
 technical interview.
 
-
 ## Definition of Done
 
 A task is complete only when:
@@ -435,23 +429,23 @@ A task is complete only when:
 - Important decisions were explained.
 - Changed files and validation results were reported.
 
-
 ## Final Goal
 
 The finished platform should demonstrate:
 
 Angular
-+ NestJS
-+ PostgreSQL
-+ Docker
-+ CI/CD
-+ DevSecOps
-+ Kubernetes
-+ WAF
-+ SIEM
-+ Monitoring
-+ Incident Detection
-+ Controlled Response
+
+- NestJS
+- PostgreSQL
+- Docker
+- CI/CD
+- DevSecOps
+- Kubernetes
+- WAF
+- SIEM
+- Monitoring
+- Incident Detection
+- Controlled Response
 
 The final result must be:
 
