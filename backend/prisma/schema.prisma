@@ -1,0 +1,153 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ProjectCategory {
+  CYBERSECURITY
+  DEVELOPMENT
+  DEVOPS
+}
+
+enum ProjectSection {
+  ARCHITECTURE
+  WORK_PERFORMED
+  RESULT
+  PROBLEM
+  LESSON
+  DOCUMENTATION
+}
+
+enum RoadmapStage {
+  IMPLEMENTED
+  IN_PROGRESS
+  PLANNED
+}
+
+enum SkillGroup {
+  PROFESSIONAL
+  TRAINING_AND_LAB
+}
+
+model Project {
+  id                      Int                  @id @default(autoincrement())
+  slug                    String               @unique
+  cardTitle               String
+  pageTitle               String
+  summary                 String
+  objective               String
+  category                ProjectCategory
+  type                    String
+  status                  String
+  repositoryUrl           String?
+  architectureDescription String?
+  published               Boolean              @default(false)
+  sortOrder               Int
+  createdAt               DateTime             @default(now())
+  updatedAt               DateTime             @updatedAt
+  technologies            ProjectTechnology[]
+  sections                ProjectSectionItem[]
+  roadmap                 ProjectRoadmapItem[]
+
+  @@index([published, sortOrder])
+}
+
+model Technology {
+  id       Int                 @id @default(autoincrement())
+  name     String
+  slug     String              @unique
+  projects ProjectTechnology[]
+}
+
+model ProjectTechnology {
+  projectId    Int
+  technologyId Int
+  sortOrder    Int
+  project      Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  technology   Technology @relation(fields: [technologyId], references: [id], onDelete: Restrict)
+
+  @@id([projectId, technologyId])
+  @@unique([projectId, sortOrder])
+  @@index([technologyId])
+}
+
+model ProjectSectionItem {
+  id        Int            @id @default(autoincrement())
+  projectId Int
+  section   ProjectSection
+  title     String?
+  content   String
+  sortOrder Int
+  project   Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, section, sortOrder])
+}
+
+model ProjectRoadmapItem {
+  id        Int          @id @default(autoincrement())
+  projectId Int
+  stage     RoadmapStage
+  content   String
+  sortOrder Int
+  project   Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, stage, sortOrder])
+}
+
+model Profile {
+  id                Int          @id
+  name              String
+  headline          String
+  introduction      String
+  professionalFocus String
+  githubUrl         String
+  languages         String[]
+  orientation       String[]
+  experience        Experience[]
+  education         Education[]
+  skills            Skill[]
+}
+
+model Experience {
+  id            Int      @id @default(autoincrement())
+  profileId     Int
+  company       String
+  clientContext String?
+  area          String
+  description   String
+  activities    String[]
+  technologies  String[]
+  sortOrder     Int
+  profile       Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, sortOrder])
+}
+
+model Education {
+  id          Int     @id @default(autoincrement())
+  profileId   Int
+  program     String
+  institution String?
+  status      String
+  sortOrder   Int
+  profile     Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, sortOrder])
+}
+
+model Skill {
+  id        Int        @id @default(autoincrement())
+  profileId Int
+  name      String
+  group     SkillGroup
+  sortOrder Int
+  profile   Profile    @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, group, sortOrder])
+  @@unique([profileId, group, name])
+}

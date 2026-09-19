@@ -1,4 +1,4 @@
-import { Project } from "./project.model";
+import { Project } from "../../src/projects/project.model";
 
 export const projects: readonly Project[] = [
   {

@@ -1,4 +1,4 @@
-import { PublicProfile } from "./profile.model";
+import { PublicProfile } from "../../src/profile/profile.model";
 
 export const publicProfile: PublicProfile = {
   name: "Alejandro Peña",

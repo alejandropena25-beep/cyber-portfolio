@@ -1,60 +1,35 @@
 # Current Architecture
 
-## Scope
+Phase 4: Angular -> NestJS -> Prisma -> PostgreSQL. No authentication, administration or containers.
 
-Phase 3 consists of two applications in the same Git repository:
+Browser requests use /api through the Angular development proxy. SSR/prerender call http://127.0.0.1:3000/api. PostgreSQL and NestJS must run during the Angular production build.
 
-- `frontend/`: Angular public interface.
-- `backend/`: NestJS public REST API.
+## Backend boundary
 
-There is no database, authentication, administration or container configuration in this phase.
+ProjectsModule and ProfileModule import shared PrismaModule. Nest creates one PrismaService, connects on module initialization and disconnects on shutdown. Shutdown hooks are enabled. Generated client output is CommonJS to match NestJS.
 
-## Request flow
+Services query asynchronously. Explicit mappers select public fields, translate enums/field names, omit absent optional sections and reconstruct roadmap lists. IDs, publication flags, timestamps and sort metadata never enter responses. Prisma batches relation queries rather than querying in a project loop. List requests load technology relations; details also load ordered sections/roadmap.
 
-```text
-Browser
-  │
-  ├─ Angular routes and assets
-  │
-  └─ /api/*
-       │
-       └─ development proxy ──> NestJS :3000
-                                  │
-                                  ├─ HealthModule
-                                  ├─ ProfileModule
-                                  └─ ProjectsModule
-                                       │
-                                       └─ typed in-memory content
-```
+GET /api/projects filters published records and sorts by sortOrder then ID. Details also require publication; missing/unpublished slugs return the existing 404. Malformed slugs retain the existing 400 regex validation. Profile reads ID 1 and ordered children; unseeded profile returns generic 503.
 
-During SSR and prerender, Angular calls `http://127.0.0.1:3000/api` directly. The browser uses the relative `/api` URL so components do not contain deployment URLs.
+Health remains process-only with exactly { "status": "ok" }. Startup connects to PostgreSQL, but health does not promise ongoing database readiness. No infrastructure metadata is exposed. CORS/header behavior is unchanged.
+
+## Model and constraints
+
+- Project owns ProjectSectionItem and ProjectRoadmapItem.
+- ProjectTechnology explicitly joins Project and Technology, with composite PK and unique ordered membership.
+- Profile owns Experience, Education and Skill.
+- Skill groups match actual content: PROFESSIONAL and TRAINING_AND_LAB.
+- Small scalar lists (languages, orientation, experience activities/technologies) use ordered PostgreSQL text arrays; they have no independent identity.
+- Experience.company is Cibernos; clientContext preserves the Ericsson service-context copy. Euroxanty stays separate.
+- Section title supports existing problem headings. No speculative public fields were added.
+
+Unique slugs support lookup. Unique child order constraints supply parent-prefixed indexes. Published/sortOrder index supports listing; technologyId supports reverse relation checks. Owned children cascade on parent deletion; shared technologies use RESTRICT. Project order ties use ID for deterministic results.
 
 ## Content ownership
 
-NestJS is the source of truth for public profile and project content:
+PostgreSQL is the only runtime source. prisma/seed-data contains unchanged Phase 3 bootstrap content, not a runtime fallback. Obsolete src/*/*.data.ts files were removed after successful database, HTTP and frontend validation.
 
-- `backend/src/profile/profile.data.ts`
-- `backend/src/projects/projects.data.ts`
+The public roadmap intentionally retains Phase 3 wording: this persistence-only change must preserve public content. Editorial updates require separate review.
 
-Angular keeps API contract interfaces for compile-time checking but contains no independent copy of the portfolio records.
-
-## Backend responsibilities
-
-- Expose confirmed public content.
-- Return project summaries separately from complete project details.
-- Return 404 for unknown project slugs.
-- Keep the health response minimal.
-- Restrict local CORS to `http://localhost:4200`.
-- Avoid exposing framework identification and stack traces.
-
-## Frontend responsibilities
-
-- Present profile and project content.
-- Keep filtering and navigation in the UI.
-- Select the correct API base URL for browser or server rendering.
-- Generate project routes during prerender by reading slugs from the API.
-- Preserve page metadata after API content is loaded.
-
-## Operational constraint
-
-The backend must be running during Angular prerender. This is intentional: it verifies that the generated frontend uses the same source of truth as the runtime API. Deployment orchestration remains a later-phase decision.
+See [backend setup](../backend/README.md) and [Phase 4 status](PHASE-4-DATABASE-PLAN.md).

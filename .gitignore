@@ -6,3 +6,5 @@ backend/*.tsbuildinfo
 .env
 .env.*
 !.env.example
+
+backend/src/generated/

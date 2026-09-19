@@ -7,12 +7,12 @@ export class ProjectsController {
   constructor(private readonly projectsService: ProjectsService) {}
 
   @Get()
-  findAll(): readonly ProjectSummary[] {
+  findAll(): Promise<readonly ProjectSummary[]> {
     return this.projectsService.findAll();
   }
 
   @Get(":slug")
-  findOne(@Param("slug") slug: string): Project {
+  findOne(@Param("slug") slug: string): Promise<Project> {
     if (!/^[a-z0-9-]+$/.test(slug)) {
       throw new BadRequestException("Invalid project slug");
     }

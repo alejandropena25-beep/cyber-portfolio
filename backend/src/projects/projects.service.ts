@@ -1,40 +1,29 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
-import { Project, ProjectSummary } from "./project.model";
-import { projects } from "./projects.data";
+﻿import { Injectable, NotFoundException } from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service";
+import type { Project, ProjectSummary } from "./project.model";
+import {
+  projectDetail,
+  projectRelations,
+  projectSummary,
+} from "./project.mapper";
 
 @Injectable()
 export class ProjectsService {
-  findAll(): readonly ProjectSummary[] {
-    return projects.map(
-      ({
-        slug,
-        cardTitle,
-        title,
-        category,
-        type,
-        status,
-        summary,
-        technologies,
-      }) => ({
-        slug,
-        cardTitle,
-        title,
-        category,
-        type,
-        status,
-        summary,
-        technologies,
-      }),
-    );
+  constructor(private readonly prisma: PrismaService) {}
+  async findAll(): Promise<readonly ProjectSummary[]> {
+    const records = await this.prisma.project.findMany({
+      where: { published: true },
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+      include: { technologies: projectRelations.technologies },
+    });
+    return records.map(projectSummary);
   }
-
-  findOne(slug: string): Project {
-    const project = projects.find((candidate) => candidate.slug === slug);
-
-    if (!project) {
-      throw new NotFoundException("Project not found");
-    }
-
-    return project;
+  async findOne(slug: string): Promise<Project> {
+    const record = await this.prisma.project.findUnique({
+      where: { slug, published: true },
+      include: projectRelations,
+    });
+    if (!record) throw new NotFoundException("Project not found");
+    return projectDetail(record);
   }
 }

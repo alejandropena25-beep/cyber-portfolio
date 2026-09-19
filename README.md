@@ -6,15 +6,16 @@ La plataforma utiliza Angular para la experiencia pública y una API NestJS para
 
 ## Estado actual
 
-El proyecto se encuentra en **Phase 3 — NestJS Backend**.
+El proyecto se encuentra en **Phase 4 - PostgreSQL + Prisma**, completada y validada con PostgreSQL local.
 
 Completado:
 
 - Phase 1: base del frontend Angular.
 - Phase 2: contenido profesional y proyectos reales.
 - Phase 3: API REST pública e integración de Angular con el backend.
+- Phase 4: persistencia PostgreSQL con Prisma, migraciones, seed y pruebas con base de datos.
 
-PostgreSQL, autenticación, Docker y el resto de la infraestructura continúan planificados para fases posteriores.
+PostgreSQL forma parte de Phase 4. Las fases posteriores no se han iniciado.
 
 ## Arquitectura local
 
@@ -28,7 +29,7 @@ Navegador
    └────────────────────────── http://localhost:3000/api ── NestJS
 ```
 
-NestJS mantiene en memoria la fuente de contenido público. Angular consume esa API tanto en navegador como durante SSR y prerenderizado.
+NestJS consulta PostgreSQL mediante Prisma como fuente de contenido. Angular consume esa API tanto en navegador como durante SSR y prerenderizado.
 
 ## Stack implementado
 
@@ -47,7 +48,7 @@ Backend:
 - NestJS 12.
 - TypeScript estricto.
 - REST API.
-- Fuente de datos local tipada.
+- Prisma 7.10.0 y PostgreSQL 18 local.
 - Jest y Supertest para pruebas HTTP.
 
 ## Instalación
@@ -64,7 +65,7 @@ npm install
 
 ## Desarrollo local
 
-Inicia la API en una terminal:
+Primero configura PostgreSQL y `backend/.env`, genera el cliente, aplica las migraciones y ejecuta el seed siguiendo [backend/README.md](backend/README.md). Después inicia la API en una terminal:
 
 ```bash
 cd backend
@@ -128,8 +129,8 @@ CORS acepta el origen local de Angular, `http://localhost:4200`, y la API desact
 
 1. Angular Frontend — completado.
 2. Portfolio Content — completado.
-3. NestJS Backend — fase actual implementada.
-4. PostgreSQL — siguiente fase planificada.
+3. NestJS Backend - completado.
+4. PostgreSQL + Prisma - completado y validado.
 5. Administración y autenticación.
 6. Docker / Docker Compose.
 7. CI/CD con GitHub Actions.

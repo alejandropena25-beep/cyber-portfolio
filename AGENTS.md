@@ -18,9 +18,12 @@ decision during a job interview.
 
 ## Current Phase
 
-CURRENT PHASE: Phase 3 — NestJS Backend.
+CURRENT PHASE: Phase 4 — PostgreSQL + Prisma.
 
-Phase 1 Angular baseline and Phase 2 portfolio content are complete.
+Phase 1 — Angular Frontend: COMPLETED
+Phase 2 — Portfolio Content: COMPLETED
+Phase 3 — NestJS Backend: COMPLETED
+Phase 4 — PostgreSQL + Prisma: CURRENT (validated; completed implementation).
 
 Existing frontend:
 
@@ -41,23 +44,28 @@ Existing frontend:
 - Typed API-backed project and profile data
 - Passing build and tests
 
-Current priorities:
+Current Phase 4 priorities:
 
-1. Maintain the NestJS public REST API.
-2. Serve project and profile content from the backend.
-3. Preserve Angular SSR / prerendering.
-4. Keep frontend and backend tests passing.
-5. Document the frontend / API boundary.
+1. Add PostgreSQL persistence.
+2. Integrate Prisma with NestJS.
+3. Preserve the existing REST API contract.
+4. Migrate confirmed public data using reproducible seed data.
+5. Make PostgreSQL the runtime source of truth.
+6. Add meaningful database-backed tests.
+7. Preserve Angular SSR/prerendering.
+8. Do NOT start authentication/admin.
+9. Do NOT introduce Docker.
+10. Do NOT introduce CI/CD or later phases.
 
 Current backend:
 
 - NestJS 12
 - Strict TypeScript
-- In-memory typed content
+- Prisma 7.10.0 / PostgreSQL persistence (validated locally)
 - Health, projects and profile endpoints
 - Focused endpoint tests
 
-DO NOT start PostgreSQL or later phases yet.
+DO NOT start Phase 5 or later phases.
 
 ## Roadmap
 
@@ -65,8 +73,8 @@ Follow this exact order:
 
 1. Angular Frontend — completed baseline
 2. Portfolio Content — completed
-3. NestJS Backend — current
-4. PostgreSQL
+3. NestJS Backend — completed
+4. PostgreSQL + Prisma — current
 5. Administration / Authentication
 6. Docker / Docker Compose
 7. CI/CD with GitHub Actions

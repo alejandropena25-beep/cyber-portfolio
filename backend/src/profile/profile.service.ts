@@ -1,10 +1,18 @@
-import { Injectable } from "@nestjs/common";
-import { publicProfile } from "./profile.data";
-import { PublicProfile } from "./profile.model";
+﻿import { Injectable, ServiceUnavailableException } from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service";
+import type { PublicProfile } from "./profile.model";
+import { profileRelations, publicProfile } from "./profile.mapper";
 
 @Injectable()
 export class ProfileService {
-  getPublicProfile(): PublicProfile {
-    return publicProfile;
+  constructor(private readonly prisma: PrismaService) {}
+  async getPublicProfile(): Promise<PublicProfile> {
+    const record = await this.prisma.profile.findUnique({
+      where: { id: 1 },
+      include: profileRelations,
+    });
+    if (!record)
+      throw new ServiceUnavailableException("Public profile unavailable");
+    return publicProfile(record);
   }
 }

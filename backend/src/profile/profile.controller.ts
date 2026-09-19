@@ -7,7 +7,7 @@ export class ProfileController {
   constructor(private readonly profileService: ProfileService) {}
 
   @Get()
-  getProfile(): PublicProfile {
+  getProfile(): Promise<PublicProfile> {
     return this.profileService.getPublicProfile();
   }
 }

@@ -1,0 +1,5 @@
+{
+  "extends": "../tsconfig.json",
+  "ts-node": { "experimentalResolver": true },
+  "compilerOptions": { "rootDir": "..", "noEmit": true, "incremental": false }
+}
