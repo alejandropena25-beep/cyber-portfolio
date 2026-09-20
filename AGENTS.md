@@ -18,14 +18,15 @@ decision during a job interview.
 
 ## Current Phase
 
-CURRENT PHASE: Phase 6 — Docker / Containerization.
+CURRENT PHASE: Phase 7 — CI/CD.
 
 Phase 1 — Angular Frontend: COMPLETED
 Phase 2 — Portfolio Content: COMPLETED
 Phase 3 — NestJS Backend: COMPLETED
 Phase 4 — PostgreSQL + Prisma: COMPLETED
 Phase 5 — Authentication / Administration: COMPLETED
-Phase 6 — Docker / Containerization: CURRENT
+Phase 6 — Docker / Containerization: COMPLETED
+Phase 7 — CI/CD: CURRENT
 
 Existing frontend:
 
@@ -46,18 +47,17 @@ Existing frontend:
 - Typed API-backed project and profile data
 - Passing build and tests
 
-Current Phase 6 priorities:
+Current Phase 7 priorities:
 
-1. Containerize Angular SSR.
-2. Containerize NestJS.
-3. Containerize PostgreSQL.
-4. Add reproducible Docker Compose orchestration.
-5. Make database migration and seed reproducible.
-6. Preserve authentication and administration.
-7. Preserve public SSR and SEO.
-8. Minimize container privileges and attack surface.
-9. Preserve normal host-based development.
-10. Do NOT start Phase 7.
+1. Validate pull requests and pushes to main with GitHub Actions.
+2. Test the backend using disposable PostgreSQL 18 on 127.0.0.1:55432.
+3. Validate frontend tests and the independent production SSR build.
+4. Build the real Dockerfiles and smoke-test a fresh isolated Compose stack.
+5. Publish verified images to GHCR from main only, without deployment.
+6. Preserve authentication, administration, SSR, SEO and host development.
+7. Keep permissions minimal and clean up all temporary CI resources.
+8. Document local validation separately from actual GitHub results.
+9. Do NOT start Phase 8.
 
 Current backend:
 
@@ -68,7 +68,7 @@ Current backend:
 - Health, projects and profile endpoints
 - Focused endpoint tests
 
-DO NOT start Phase 7 or later phases.
+DO NOT start Phase 8 or later phases.
 
 ## Roadmap
 
@@ -79,8 +79,8 @@ Follow this exact order:
 3. NestJS Backend — completed
 4. PostgreSQL + Prisma — completed
 5. Administration / Authentication — completed
-6. Docker / Docker Compose — current
-7. CI/CD with GitHub Actions
+6. Docker / Docker Compose — completed
+7. CI/CD with GitHub Actions — current
 8. DevSecOps
 9. Kubernetes
 10. WAF / Infrastructure Security

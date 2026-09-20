@@ -22,7 +22,13 @@ npm run build
 
 El build de producción ya no necesita una API o base activa. Las rutas públicas con nombre usan `RenderMode.Server` y se resuelven cuando llega una petición. `/admin/**` usa renderizado cliente. El wildcard 404 usa `RenderMode.Prerender`; como sus URL no se pueden enumerar, el recuento esperado sigue siendo cero rutas prerenderizadas, mientras que una URL desconocida conserva HTTP 404 en ejecución.
 
-## Docker SSR
+## CI validation
+
+The `Frontend CI` job in `../.github/workflows/ci.yml` uses Node 24, npm caching keyed by `frontend/package-lock.json`, `npm ci`, `npm test -- --watch=false` (18 tests), and `npm run build`. It has no PostgreSQL service and starts no backend. Runtime SSR and client-rendered administration remain unchanged.
+
+The downstream Docker smoke additionally requests `/`, `/about`, `/projects` and `/projects/bunkerweb-waf` from the real SSR container, checking populated HTML and Spanish UTF-8. A successful push to main delivers that same frontend image to GHCR for future deployment. Manual runs and PRs validate only. See [Phase 7](../docs/PHASE-7-CICD-PLAN.md) for the job graph and first remote run.
+
+## Docker SSR image
 
 `frontend/Dockerfile` instala con `npm ci`, construye Angular en una etapa separada e instala solo dependencias de producción para el runtime. La imagen ejecuta `dist/frontend/server/server.mjs`, no `ng serve`, como el usuario no privilegiado `node`.
 

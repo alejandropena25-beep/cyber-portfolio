@@ -6,6 +6,7 @@ try {
   if (
     !["postgres:", "postgresql:"].includes(target.protocol) ||
     !["localhost", "127.0.0.1", "[::1]"].includes(target.hostname) ||
+    target.port !== "55432" ||
     target.pathname !== "/cyber_portfolio_test" ||
     [...target.searchParams].some(
       ([key, value]) => key !== "schema" || value !== "public",
@@ -19,7 +20,7 @@ try {
   }
 } catch {
   console.error(
-    "Tests require TEST_DATABASE_URL pointing to local cyber_portfolio_test, separate from development, with only an optional schema=public parameter.",
+    "Tests require TEST_DATABASE_URL pointing to loopback port 55432 and cyber_portfolio_test, separate from development, with only an optional schema=public parameter.",
   );
   process.exit(1);
 }
