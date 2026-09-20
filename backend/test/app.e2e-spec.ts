@@ -25,14 +25,16 @@ describe("Public portfolio API", () => {
     if (
       process.env["NODE_ENV"] !== "test" ||
       process.env["DATABASE_URL"] !== process.env["TEST_DATABASE_URL"] ||
+      !["postgres:", "postgresql:"].includes(target.protocol) ||
       !["localhost", "127.0.0.1", "[::1]"].includes(target.hostname) ||
+      target.port !== "55432" ||
       target.pathname !== "/cyber_portfolio_test" ||
       [...target.searchParams].some(
         ([key, value]) => key !== "schema" || value !== "public",
       ) ||
       target.hash
     ) {
-      throw new Error("Run npm test with a dedicated local TEST_DATABASE_URL.");
+      throw new Error("Run npm test with a dedicated loopback:55432 TEST_DATABASE_URL.");
     }
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],

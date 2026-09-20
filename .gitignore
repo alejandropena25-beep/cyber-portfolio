@@ -13,3 +13,7 @@ frontend/dist/
 frontend/coverage/
 
 backend/src/generated/
+
+# Disposable Compose smoke state and optional verified-image export.
+.ci-smoke/
+.ci-images/

@@ -20,7 +20,39 @@ npm run start:dev
 
 `npm run admin:create` prompts for an email and a masked password, requires at least 12 characters, stores only an Argon2id hash and revokes earlier sessions for that account. It is restricted to the expected local database unless the explicit Docker operation mode is active.
 
-Tests require `TEST_DATABASE_URL`, apply migrations and seed their dedicated test database, restore temporary mutations, and never fall back to the development database.
+Tests require `TEST_DATABASE_URL`, apply migrations and seed their dedicated test database, restore temporary mutations, and never fall back to the development database. Both the launcher (before any subprocess) and the suite (before app initialization) require PostgreSQL protocol, a loopback host, explicit port **55432**, database exactly `cyber_portfolio_test`, no fragment, and no query parameters except `schema=public`. The suite additionally requires `NODE_ENV=test` and identical `DATABASE_URL`/`TEST_DATABASE_URL`; the launcher sets these only after validation and rejects overlap with the development database. Existing `.env` values targeting port 5432 must be updated or explicitly overridden for tests.
+
+## Isolated tests and CI
+
+The `Backend CI` job uses Node 24, the backend lockfile npm cache, `npm ci`, `npm run build` (including Prisma generation), and `npm test`. A disposable `postgres:18-bookworm` service is bound to `127.0.0.1:55432`, with `pg_isready` readiness. The existing runner generates Prisma, runs `migrate deploy`, and executes all 17 PostgreSQL e2e tests. It never uses `migrate dev` or `migrate reset`. The separate repository job runs 18 guard tests without a database.
+
+Local equivalent, from this directory (temporary test-only credentials below; never reuse them elsewhere):
+
+```powershell
+docker run --detach --rm --name cyber-portfolio-e2e --publish 127.0.0.1:55432:5432 --env POSTGRES_USER=portfolio_test --env POSTGRES_PASSWORD=disposable_ci_only --env POSTGRES_DB=cyber_portfolio_test --health-cmd "pg_isready -U portfolio_test -d cyber_portfolio_test" --health-interval 2s --health-timeout 5s --health-retries 30 postgres:18-bookworm
+$env:TEST_DATABASE_URL='postgresql://portfolio_test:disposable_ci_only@127.0.0.1:55432/cyber_portfolio_test'
+try {
+  $ready=$false
+  for ($attempt=0; $attempt -lt 30; $attempt++) {
+    if ((docker inspect --format '{{.State.Health.Status}}' cyber-portfolio-e2e) -eq 'healthy') { $ready=$true; break }
+    Start-Sleep -Seconds 2
+  }
+  if (-not $ready) { throw 'Disposable PostgreSQL did not become healthy.' }
+  npm ci
+  if ($LASTEXITCODE -ne 0) { throw 'Install failed.' }
+  npm run build
+  if ($LASTEXITCODE -ne 0) { throw 'Build failed.' }
+  npm test
+  if ($LASTEXITCODE -ne 0) { throw 'Tests failed.' }
+} finally {
+  docker stop cyber-portfolio-e2e
+  Remove-Item Env:TEST_DATABASE_URL
+}
+```
+
+Use an unused port 55432 and a new container name; do not reuse another database listening there. These guards restrict the target but cannot prove an arbitrary service on that port is disposable: the workflow creates and owns its service. Never point CI helpers at Windows PostgreSQL on port 5432.
+
+From the repository root, `node --test backend/test/database-safety.test.cjs` tests rejection before any subprocess without database access. CI/CD operation and branch protection are documented in [Phase 7](../docs/PHASE-7-CICD-PLAN.md).
 
 ## Docker image
 

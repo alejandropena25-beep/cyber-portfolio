@@ -1,0 +1,183 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  quality:
+    name: Repository checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          package-manager-cache: false
+      - name: Check committed whitespace and helper syntax
+        run: |
+          git show --format= --check HEAD
+          git diff --check
+          node --check scripts/ci/compose-smoke.mjs
+          node --check backend/test/run-e2e.cjs
+      - name: Prove unsafe database targets cannot launch tests
+        run: node --test backend/test/database-safety.test.cjs
+
+  backend-ci:
+    name: Backend CI
+    needs: quality
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:18-bookworm
+        env:
+          POSTGRES_USER: portfolio_test
+          POSTGRES_PASSWORD: disposable_ci_only
+          POSTGRES_DB: cyber_portfolio_test
+        ports:
+          - 127.0.0.1:55432:5432
+        options: >-
+          --health-cmd "pg_isready -U portfolio_test -d cyber_portfolio_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      TEST_DATABASE_URL: postgresql://portfolio_test:disposable_ci_only@127.0.0.1:55432/cyber_portfolio_test
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Install backend from lockfile
+        run: npm ci
+      - name: Generate Linux Prisma Client and build NestJS
+        run: npm run build
+      - name: Migrate disposable database and run all PostgreSQL e2e tests
+        run: npm test
+
+  frontend-ci:
+    name: Frontend CI
+    needs: quality
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend from lockfile
+        run: npm ci
+      - name: Run Angular tests once
+        run: npm test -- --watch=false
+      - name: Build production SSR without backend or database
+        run: npm run build
+
+  docker-smoke:
+    name: Docker smoke
+    needs: [backend-ci, frontend-ci]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CI_EXPORT_IMAGES: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          package-manager-cache: false
+      - name: Build real images and smoke-test a fresh isolated Compose stack
+        run: node scripts/ci/compose-smoke.mjs
+      - name: Always clean this run's Compose resources and temporary environment
+        if: always()
+        run: node scripts/ci/compose-smoke.mjs cleanup
+      - name: Transfer only verified images to the main delivery job
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v7
+        with:
+          name: verified-images
+          path: |
+            .ci-images/verified-images.tar
+            .ci-images/images.json
+          include-hidden-files: true
+          if-no-files-found: error
+          compression-level: 1
+          retention-days: 1
+
+  publish-images:
+    name: Publish verified images
+    needs: [quality, backend-ci, frontend-ci, docker-smoke]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Download images verified by this workflow run
+        uses: actions/download-artifact@v8
+        with:
+          name: verified-images
+          path: verified-images
+      - name: Load and publish the verified artifacts to GHCR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          DOCKER_CONFIG=$(mktemp -d "$RUNNER_TEMP/portfolio-registry.XXXXXX")
+          export DOCKER_CONFIG
+          trap 'rm -rf -- "$DOCKER_CONFIG"' EXIT
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          docker load --input verified-images/verified-images.tar
+          registry="ghcr.io/${GITHUB_REPOSITORY,,}"
+          tag="sha-${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          # Run/attempt suffix makes a rebuilt commit a distinct delivery artifact.
+          for component in backend backend-tools frontend; do
+            source=$(jq -er --arg component "$component" '.[$component]' verified-images/images.json)
+            image="${registry}-${component}"
+            docker tag "$source" "$image:$tag"
+            docker push "$image:$tag"
+            printf '%s\n' "Published \`$image:$tag\`" >> "$GITHUB_STEP_SUMMARY"
+          done
+          # A delayed run must not move main back to an older commit.
+          current_main=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)
+          if [[ "$current_main" == "$GITHUB_SHA" ]]; then
+            for component in backend backend-tools frontend; do
+              image="${registry}-${component}"
+              docker tag "$image:$tag" "$image:main"
+              docker push "$image:main"
+            done
+          fi
