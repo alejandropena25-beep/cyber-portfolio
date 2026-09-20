@@ -6,7 +6,7 @@ La plataforma utiliza Angular para la experiencia pública y una API NestJS para
 
 ## Estado actual
 
-El proyecto se encuentra en **Phase 4 - PostgreSQL + Prisma**, completada y validada con PostgreSQL local.
+El proyecto se encuentra en **Phase 5 - Authentication / Administration**.
 
 Completado:
 
@@ -14,8 +14,9 @@ Completado:
 - Phase 2: contenido profesional y proyectos reales.
 - Phase 3: API REST pública e integración de Angular con el backend.
 - Phase 4: persistencia PostgreSQL con Prisma, migraciones, seed y pruebas con base de datos.
+- Phase 5: sesiones persistentes, autenticación segura y administración de proyectos/perfil.
 
-PostgreSQL forma parte de Phase 4. Las fases posteriores no se han iniciado.
+Phase 6 y las fases posteriores no se han iniciado.
 
 ## Arquitectura local
 
@@ -49,6 +50,7 @@ Backend:
 - TypeScript estricto.
 - REST API.
 - Prisma 7.10.0 y PostgreSQL 18 local.
+- Autenticación por sesión, Argon2id y API administrativa protegida.
 - Jest y Supertest para pruebas HTTP.
 
 ## Instalación
@@ -92,7 +94,20 @@ La aplicación estará disponible en `http://localhost:4200`. El servidor de des
 | GET    | `/api/projects/:slug` | Contenido completo de un proyecto.     |
 | GET    | `/api/profile`        | Perfil profesional público confirmado. |
 
-Un `slug` de proyecto inexistente devuelve HTTP 404. La API no expone endpoints de escritura, administración o autenticación.
+Un `slug` de proyecto inexistente devuelve HTTP 404. La API pública conserva este contrato. La administración usa rutas `/api/auth/*` y `/api/admin/*` protegidas, que no se enlazan desde la navegación pública.
+
+## Administración local
+
+Después de aplicar las migraciones, crea o actualiza un administrador desde un terminal interactivo. El script oculta la contraseña, exige al menos 12 caracteres, guarda únicamente su hash Argon2id y revoca las sesiones anteriores:
+
+```bash
+cd backend
+npm run admin:create
+```
+
+No compartas la contraseña por chat ni la guardes en `.env`, documentación o Git. Con ambas aplicaciones iniciadas, abre `http://localhost:4200/admin/login` directamente.
+
+La autenticación usa una cookie de sesión HttpOnly. Las mutaciones requieren además Origin permitido y token CSRF ligado a la sesión. Las rutas administrativas usan `noindex,nofollow` y renderizado cliente; no se prerenderizan datos privados.
 
 ## Build y tests
 
@@ -131,7 +146,7 @@ CORS acepta el origen local de Angular, `http://localhost:4200`, y la API desact
 2. Portfolio Content — completado.
 3. NestJS Backend - completado.
 4. PostgreSQL + Prisma - completado y validado.
-5. Administración y autenticación.
+5. Administración y autenticación — fase actual.
 6. Docker / Docker Compose.
 7. CI/CD con GitHub Actions.
 8. DevSecOps.
@@ -148,6 +163,7 @@ Las tecnologías futuras no forman parte todavía de la implementación.
 
 - [Arquitectura actual](docs/ARCHITECTURE.md)
 - [Plan de Phase 4](docs/PHASE-4-DATABASE-PLAN.md)
+- [Plan de Phase 5](docs/PHASE-5-AUTH-PLAN.md)
 
 ## Repositorio
 

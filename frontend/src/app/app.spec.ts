@@ -1,10 +1,14 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
-import { of } from 'rxjs';
+import { Observable, of, Subject } from 'rxjs';
 import { App } from './app';
 import { routes } from './app.routes';
 import { PortfolioApiService } from './data/portfolio-api.service';
 import { Project, PublicProfile } from './data/portfolio.models';
+import { signal } from '@angular/core';
+import { AuthService } from './admin/auth.service';
+import { AdminApiService } from './admin/admin-api.service';
+import type { AdminProfile, AdminProject } from './admin/admin.models';
 
 const projects: readonly Project[] = [
   {
@@ -213,5 +217,189 @@ describe('Portfolio navigation', () => {
     buttons[0]!.click();
     fixture.detectChanges();
     expect(element.querySelectorAll('.project-card')).toHaveLength(projects.length);
+  });
+});
+
+const adminProject: AdminProject = {
+  id: 1,
+  slug: 'test-project',
+  cardTitle: 'Test project',
+  pageTitle: 'Test project page',
+  summary: 'Admin summary',
+  objective: 'Admin objective',
+  category: 'CYBERSECURITY',
+  type: 'Laboratorio',
+  status: 'Borrador',
+  repositoryUrl: null,
+  architectureDescription: null,
+  published: false,
+  sortOrder: 0,
+  technologies: ['Angular'],
+  sections: [],
+  roadmap: [],
+};
+
+const adminProfile: AdminProfile = {
+  name: 'Test Admin Profile',
+  headline: 'Headline',
+  introduction: 'Introduction',
+  professionalFocus: 'Focus',
+  githubUrl: 'https://example.invalid/profile',
+  languages: ['English'],
+  orientation: ['Security'],
+  experience: [],
+  education: [],
+  skills: [],
+};
+
+class FakeAuthService {
+  readonly user = signal<{ id: number; email: string; role: 'ADMIN' } | null>(null);
+  authenticated = false;
+  loginCalls = 0;
+  login() {
+    this.loginCalls += 1;
+    const user = { id: 1, email: 'admin@example.invalid', role: 'ADMIN' as const };
+    this.user.set(user);
+    return of({ user });
+  }
+  checkSession() {
+    if (this.authenticated) this.user.set({ id: 1, email: 'admin@example.invalid', role: 'ADMIN' });
+    return of(this.authenticated);
+  }
+  logout() {
+    this.user.set(null);
+    return of(undefined);
+  }
+}
+
+class FakeAdminApiService {
+  updateCalls = 0;
+  projectResponse: Observable<AdminProject> = of(adminProject);
+  profileResponse: Observable<AdminProfile> = of(adminProfile);
+  projects() {
+    return of([adminProject]);
+  }
+  project() {
+    return this.projectResponse;
+  }
+  createProject() {
+    return of(adminProject);
+  }
+  updateProject() {
+    this.updateCalls += 1;
+    return of(adminProject);
+  }
+  profile() {
+    return this.profileResponse;
+  }
+  updateProfile() {
+    return of(adminProfile);
+  }
+}
+
+describe('Administration UI', () => {
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [App],
+      providers: [
+        provideRouter(routes),
+        { provide: PortfolioApiService, useClass: FakePortfolioApiService },
+        { provide: AuthService, useClass: FakeAuthService },
+        { provide: AdminApiService, useClass: FakeAdminApiService },
+      ],
+    }).compileComponents();
+  });
+
+  async function renderAdmin(url: string) {
+    const fixture = TestBed.createComponent(App);
+    await TestBed.inject(Router).navigateByUrl(url);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  it('renders and submits the login UI', async () => {
+    const fixture = await renderAdmin('/admin/login');
+    const element = fixture.nativeElement as HTMLElement;
+    const inputs = element.querySelectorAll<HTMLInputElement>('input');
+    inputs[0]!.value = 'admin@example.invalid';
+    inputs[0]!.dispatchEvent(new Event('input'));
+    inputs[1]!.value = 'test-password';
+    inputs[1]!.dispatchEvent(new Event('input'));
+    element.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+    expect(TestBed.inject(AuthService) as unknown as FakeAuthService).toMatchObject({
+      loginCalls: 1,
+    });
+  });
+
+  it('redirects an unauthenticated admin route to login', async () => {
+    await renderAdmin('/admin');
+    expect(TestBed.inject(Router).url).toBe('/admin/login');
+  });
+
+  it('allows an authenticated administrator to reach the dashboard', async () => {
+    const auth = TestBed.inject(AuthService) as unknown as FakeAuthService;
+    auth.authenticated = true;
+    const fixture = await renderAdmin('/admin');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      'Gestiona el contenido público',
+    );
+  });
+
+  it('loads project data into the editing UI and saves an edit', async () => {
+    const auth = TestBed.inject(AuthService) as unknown as FakeAuthService;
+    auth.authenticated = true;
+    const fixture = await renderAdmin('/admin/projects/1/edit');
+    const element = fixture.nativeElement as HTMLElement;
+    const summary = element.querySelector<HTMLTextAreaElement>(
+      'textarea[formControlName="summary"]',
+    )!;
+    expect(summary.value).toBe('Admin summary');
+    summary.value = 'Changed summary';
+    summary.dispatchEvent(new Event('input'));
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    element.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit'));
+    expect((TestBed.inject(AdminApiService) as unknown as FakeAdminApiService).updateCalls).toBe(1);
+  });
+
+  it('reactively replaces the profile loading state when an async response arrives', async () => {
+    const auth = TestBed.inject(AuthService) as unknown as FakeAuthService;
+    const api = TestBed.inject(AdminApiService) as unknown as FakeAdminApiService;
+    const response = new Subject<AdminProfile>();
+    auth.authenticated = true;
+    api.profileResponse = response;
+    const fixture = await renderAdmin('/admin/profile');
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.querySelector('[role="status"]')?.textContent).toContain('Cargando');
+
+    response.next(adminProfile);
+    response.complete();
+    await fixture.whenStable();
+
+    expect(element.querySelector<HTMLInputElement>('input[formControlName="name"]')?.value).toBe(
+      adminProfile.name,
+    );
+    expect(element.querySelector('[role="status"]')).toBeNull();
+  });
+
+  it('reactively replaces the project loading state when an async response arrives', async () => {
+    const auth = TestBed.inject(AuthService) as unknown as FakeAuthService;
+    const api = TestBed.inject(AdminApiService) as unknown as FakeAdminApiService;
+    const response = new Subject<AdminProject>();
+    auth.authenticated = true;
+    api.projectResponse = response;
+    const fixture = await renderAdmin('/admin/projects/1/edit');
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.querySelector('[role="status"]')?.textContent).toContain('Cargando');
+
+    response.next(adminProject);
+    response.complete();
+    await fixture.whenStable();
+
+    expect(
+      element.querySelector<HTMLInputElement>('input[formControlName="cardTitle"]')?.value,
+    ).toBe(adminProject.cardTitle);
+    expect(element.querySelector('[role="status"]')).toBeNull();
   });
 });

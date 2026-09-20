@@ -25,16 +25,20 @@ export class App {
       )
       .subscribe(() => {
         let route = this.activatedRoute;
+        let description: unknown;
+        let robots = 'index,follow';
 
-        while (route.firstChild) {
+        while (true) {
+          description = route.snapshot.data['description'] ?? description;
+          robots = route.snapshot.data['robots'] ?? robots;
+          if (!route.firstChild) break;
           route = route.firstChild;
         }
-
-        const description = route.snapshot.data['description'];
 
         if (typeof description === 'string') {
           this.meta.updateTag({ name: 'description', content: description });
         }
+        this.meta.updateTag({ name: 'robots', content: robots });
       });
   }
 }

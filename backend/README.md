@@ -1,6 +1,6 @@
 # Cyber Portfolio - Backend
 
-Phase 4: NestJS -> Prisma 7.10.0 -> PostgreSQL. Migration, seed, database-backed tests and Angular SSR/prerender have been validated locally.
+Phase 5: NestJS -> Prisma 7.10.0 -> PostgreSQL, with session authentication and protected administration. The Phase 4 public API contract remains unchanged.
 
 ## Local database prerequisite (Windows)
 
@@ -30,6 +30,9 @@ From backend/, copy .env.example to .env and replace placeholders locally. Never
 - DATABASE_URL: local cyber_portfolio connection.
 - TEST_DATABASE_URL: local cyber_portfolio_test, separate credentials, only optional schema=public query parameter.
 - PORT: optional API port, default 3000.
+- FRONTEND_ORIGIN: exact allowed browser origin; defaults to `http://localhost:4200`.
+- SESSION_COOKIE_SECURE: use `false` only for localhost HTTP; production forces Secure cookies.
+- SESSION_TTL_HOURS: positive session lifetime, default 8.
 
 ## Bootstrap and startup order
 
@@ -41,6 +44,7 @@ npm run prisma:generate
 npm run db:migrate
 npm run db:status
 npm run db:seed
+npm run admin:create
 npm run build
 npm test
 npm run start:dev
@@ -51,6 +55,18 @@ Migrations use prisma migrate deploy: no reset or shadow database. The initial S
 Seed execution is restricted to local cyber_portfolio or cyber_portfolio_test. It upserts confirmed projects/profile and replaces their children in one transaction. Rerunning restores bootstrap content and publication flags for those records; it is not an ongoing editing tool. Unrelated projects and unused technologies remain. Child numeric IDs may change; they are private.
 
 Start Angular from frontend/ with npm start. Browser requests use the development proxy; SSR uses http://127.0.0.1:3000/api.
+
+`npm run admin:create` is intentionally interactive and restricted to local `cyber_portfolio`. It prompts for an email and masked password, creates or updates the administrator with Argon2id, and revokes that account's existing sessions. Never add administrator credentials to seeds, environment examples or source files.
+
+## Authentication and administration
+
+Login creates independent random 256-bit session and CSRF tokens. Only SHA-256 digests are stored in `AdminSession`. The raw session token is sent solely in an HttpOnly, SameSite=Strict cookie scoped to `/api`; it is Secure in production. Logout deletes the session, and expired or disabled-user sessions cannot authenticate.
+
+Unsafe requests require the exact configured Origin. Authenticated mutations also require the readable `XSRF-TOKEN` cookie to match `X-XSRF-TOKEN` and the digest tied to the session. Login is limited to five requests per minute with the Nest throttler. This limiter uses process memory and the observed request IP; a later reverse-proxy/multi-instance deployment must configure trusted proxy handling and shared limiter storage.
+
+All `/api/admin/*` routes use the server-side session guard. Project and profile aggregate writes use Prisma transactions. The Angular guard is only a navigation convenience.
+
+Auth routes are `/api/auth/login`, `/api/auth/logout` and `/api/auth/me`. Admin routes cover project list/detail/create/update and profile read/update. There is no registration, password-reset, OAuth or hard-delete endpoint.
 
 ## Validation
 

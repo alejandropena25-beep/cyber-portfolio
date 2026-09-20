@@ -8,6 +8,11 @@ import { PrismaService } from "../src/prisma/prisma.service";
 import { seedContent } from "../prisma/seed-content";
 import { projects } from "../prisma/seed-data/projects";
 import { publicProfile } from "../prisma/seed-data/profile";
+import * as argon2 from "argon2";
+import { createHash } from "node:crypto";
+
+const testAdminEmail = "phase5-admin@example.invalid";
+const testAdminPassword = "Correct-Test-Password-Only-42";
 
 describe("Public portfolio API", () => {
   let app: INestApplication;
@@ -39,11 +44,38 @@ describe("Public portfolio API", () => {
     await app.init();
     prisma = app.get(PrismaService);
     await seedContent(prisma);
+    await prisma.adminUser.deleteMany({ where: { email: testAdminEmail } });
+    await prisma.adminUser.create({
+      data: {
+        email: testAdminEmail,
+        passwordHash: await argon2.hash(testAdminPassword, {
+          type: argon2.argon2id,
+          memoryCost: 19456,
+          timeCost: 2,
+          parallelism: 1,
+        }),
+      },
+    });
   }, 30000);
 
   afterAll(async () => {
+    await prisma?.adminUser.deleteMany({ where: { email: testAdminEmail } });
     await app?.close();
   });
+
+  async function login() {
+    const response = await request(app.getHttpServer())
+      .post("/api/auth/login")
+      .set("Origin", "http://localhost:4200")
+      .send({ email: testAdminEmail, password: testAdminPassword })
+      .expect(201);
+    expect(response.headers["cache-control"]).toBe("private, no-store");
+    const setCookies = response.headers["set-cookie"] as unknown as string[];
+    const cookie = setCookies.map((value) => value.split(";", 1)[0]).join("; ");
+    const csrf = /XSRF-TOKEN=([^;]+)/.exec(cookie)?.[1];
+    if (!csrf) throw new Error("Login did not return a CSRF cookie.");
+    return { response, cookie, csrf: decodeURIComponent(csrf) };
+  }
 
   it("GET /api/health returns a minimal health response", async () => {
     const response = await request(app.getHttpServer())
@@ -216,4 +248,168 @@ describe("Public portfolio API", () => {
     await seedContent(prisma);
     expect(await counts()).toEqual(before);
   }, 30000);
+
+  it("uses generic failures for invalid and unknown login credentials", async () => {
+    const invalid = await request(app.getHttpServer())
+      .post("/api/auth/login")
+      .set("Origin", "http://localhost:4200")
+      .send({ email: testAdminEmail, password: "wrong-password" })
+      .expect(401);
+    const unknown = await request(app.getHttpServer())
+      .post("/api/auth/login")
+      .set("Origin", "http://localhost:4200")
+      .send({ email: "unknown@example.invalid", password: "wrong-password" })
+      .expect(401);
+    expect(invalid.body).toEqual(unknown.body);
+    expect(invalid.body.message).toBe("Invalid credentials");
+  });
+
+  it("creates an HttpOnly session cookie and authenticates GET /api/auth/me", async () => {
+    const { response, cookie } = await login();
+    const headers = response.headers["set-cookie"] as unknown as string[];
+    expect(
+      headers.some((value) =>
+        /portfolio_admin_session=.*HttpOnly.*SameSite=Strict/i.test(value),
+      ),
+    ).toBe(true);
+    expect(response.body.user).toEqual({
+      id: expect.any(Number),
+      email: testAdminEmail,
+      role: "ADMIN",
+    });
+    const me = await request(app.getHttpServer())
+      .get("/api/auth/me")
+      .set("Cookie", cookie)
+      .expect(200);
+    expect(me.headers["cache-control"]).toBe("private, no-store");
+    expect(me.body.user).toEqual(
+      expect.objectContaining({ email: testAdminEmail, role: "ADMIN" }),
+    );
+    expect(JSON.stringify(me.body)).not.toContain("passwordHash");
+  });
+
+  it("rejects unauthenticated auth and admin requests", async () => {
+    await request(app.getHttpServer()).get("/api/auth/me").expect(401);
+    await request(app.getHttpServer()).get("/api/admin/projects").expect(401);
+  });
+
+  it("allows authenticated reads and rejects missing or invalid CSRF tokens", async () => {
+    const { cookie, csrf } = await login();
+    const list = await request(app.getHttpServer())
+      .get("/api/admin/projects")
+      .set("Cookie", cookie)
+      .expect(200);
+    expect(list.headers["cache-control"]).toBe("private, no-store");
+    const project = list.body[0];
+    await request(app.getHttpServer())
+      .patch(`/api/admin/projects/${project.id}`)
+      .set("Origin", "http://localhost:4200")
+      .set("Cookie", cookie)
+      .send(project)
+      .expect(403);
+    await request(app.getHttpServer())
+      .patch(`/api/admin/projects/${project.id}`)
+      .set("Origin", "http://localhost:4200")
+      .set("Cookie", cookie)
+      .set("X-XSRF-TOKEN", `${csrf}-invalid`)
+      .send(project)
+      .expect(403);
+  });
+
+  it("updates a project transactionally and preserves public publication behavior", async () => {
+    const { cookie, csrf } = await login();
+    const list = await request(app.getHttpServer())
+      .get("/api/admin/projects")
+      .set("Cookie", cookie)
+      .expect(200);
+    const project = list.body[0];
+    try {
+      const changed = {
+        ...project,
+        summary: "Phase 5 administered summary",
+        published: true,
+      };
+      await request(app.getHttpServer())
+        .patch(`/api/admin/projects/${project.id}`)
+        .set("Origin", "http://localhost:4200")
+        .set("Cookie", cookie)
+        .set("X-XSRF-TOKEN", csrf)
+        .send(changed)
+        .expect(200);
+      const detail = await request(app.getHttpServer())
+        .get(`/api/projects/${project.slug}`)
+        .expect(200);
+      expect(detail.body.summary).toBe("Phase 5 administered summary");
+      await request(app.getHttpServer())
+        .patch(`/api/admin/projects/${project.id}`)
+        .set("Origin", "http://localhost:4200")
+        .set("Cookie", cookie)
+        .set("X-XSRF-TOKEN", csrf)
+        .send({ ...changed, published: false })
+        .expect(200);
+      await request(app.getHttpServer())
+        .get(`/api/projects/${project.slug}`)
+        .expect(404);
+    } finally {
+      await seedContent(prisma);
+    }
+  }, 30000);
+
+  it("updates the profile aggregate through the protected API", async () => {
+    const { cookie, csrf } = await login();
+    const current = await request(app.getHttpServer())
+      .get("/api/admin/profile")
+      .set("Cookie", cookie)
+      .expect(200);
+    try {
+      await request(app.getHttpServer())
+        .put("/api/admin/profile")
+        .set("Origin", "http://localhost:4200")
+        .set("Cookie", cookie)
+        .set("X-XSRF-TOKEN", csrf)
+        .send({ ...current.body, headline: "Phase 5 test headline" })
+        .expect(200);
+      const publicResponse = await request(app.getHttpServer())
+        .get("/api/profile")
+        .expect(200);
+      expect(publicResponse.body.headline).toBe("Phase 5 test headline");
+    } finally {
+      await seedContent(prisma);
+    }
+  });
+
+  it("does not authenticate expired sessions", async () => {
+    const { cookie } = await login();
+    const raw = /portfolio_admin_session=([^;]+)/.exec(cookie)?.[1];
+    if (!raw) throw new Error("Missing session cookie");
+    const tokenHash = createHash("sha256")
+      .update(decodeURIComponent(raw))
+      .digest("hex");
+    await prisma.adminSession.update({
+      where: { tokenHash },
+      data: { expiresAt: new Date(Date.now() - 1000) },
+    });
+    await request(app.getHttpServer())
+      .get("/api/auth/me")
+      .set("Cookie", cookie)
+      .expect(401);
+  });
+
+  it("logout revokes the current session and is safe without a session", async () => {
+    const { cookie, csrf } = await login();
+    await request(app.getHttpServer())
+      .post("/api/auth/logout")
+      .set("Origin", "http://localhost:4200")
+      .set("Cookie", cookie)
+      .set("X-XSRF-TOKEN", csrf)
+      .expect(201);
+    await request(app.getHttpServer())
+      .get("/api/auth/me")
+      .set("Cookie", cookie)
+      .expect(401);
+    await request(app.getHttpServer())
+      .post("/api/auth/logout")
+      .set("Origin", "http://localhost:4200")
+      .expect(201);
+  });
 });

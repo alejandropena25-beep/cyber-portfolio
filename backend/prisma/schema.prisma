@@ -34,6 +34,34 @@ enum SkillGroup {
   TRAINING_AND_LAB
 }
 
+enum AdminRole {
+  ADMIN
+}
+
+model AdminUser {
+  id           Int            @id @default(autoincrement())
+  email        String         @unique
+  passwordHash String
+  role         AdminRole      @default(ADMIN)
+  enabled      Boolean        @default(true)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  sessions     AdminSession[]
+}
+
+model AdminSession {
+  id            Int       @id @default(autoincrement())
+  adminUserId   Int
+  tokenHash     String    @unique
+  csrfTokenHash String
+  expiresAt     DateTime
+  createdAt     DateTime  @default(now())
+  adminUser     AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@index([adminUserId])
+  @@index([expiresAt])
+}
+
 model Project {
   id                      Int                  @id @default(autoincrement())
   slug                    String               @unique

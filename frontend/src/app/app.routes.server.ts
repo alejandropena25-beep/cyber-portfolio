@@ -6,6 +6,7 @@ interface ProjectSlug {
 }
 
 export const serverRoutes: ServerRoute[] = [
+  { path: 'admin/**', renderMode: RenderMode.Client },
   {
     path: 'projects/:slug',
     renderMode: RenderMode.Prerender,

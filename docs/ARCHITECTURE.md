@@ -1,35 +1,44 @@
 # Current Architecture
 
-Phase 4: Angular -> NestJS -> Prisma -> PostgreSQL. No authentication, administration or containers.
+Phase 5 adds session-based authentication and administration to the existing Angular -> NestJS -> Prisma -> PostgreSQL system. Public API response models and published-only filtering remain unchanged.
 
-Browser requests use /api through the Angular development proxy. SSR/prerender call http://127.0.0.1:3000/api. PostgreSQL and NestJS must run during the Angular production build.
+## Runtime boundaries
 
-## Backend boundary
+Browser requests use `/api` through the Angular development proxy. Public SSR/prerender calls `http://127.0.0.1:3000/api`; private `/admin/**` routes use client rendering and are neither prerendered nor supplied authenticated data during SSR.
 
-ProjectsModule and ProfileModule import shared PrismaModule. Nest creates one PrismaService, connects on module initialization and disconnects on shutdown. Shutdown hooks are enabled. Generated client output is CommonJS to match NestJS.
+NestJS uses one shared `PrismaService`. Public `ProjectsModule` and `ProfileModule` still return explicit public mappers. The protected `AdminModule` exposes editable aggregates and uses transactions when replacing a project’s technologies, sections and roadmap or the profile’s experience, education and skills.
 
-Services query asynchronously. Explicit mappers select public fields, translate enums/field names, omit absent optional sections and reconstruct roadmap lists. IDs, publication flags, timestamps and sort metadata never enter responses. Prisma batches relation queries rather than querying in a project loop. List requests load technology relations; details also load ordered sections/roadmap.
+## Authentication
 
-GET /api/projects filters published records and sorts by sortOrder then ID. Details also require publication; missing/unpublished slugs return the existing 404. Malformed slugs retain the existing 400 regex validation. Profile reads ID 1 and ordered children; unseeded profile returns generic 503.
+`POST /api/auth/login` verifies an Argon2id password and creates a PostgreSQL `AdminSession`. The browser receives a random 256-bit session token in an HttpOnly, SameSite=Strict cookie; only its SHA-256 digest is stored. Sessions expire after `SESSION_TTL_HOURS` (eight hours by default), disabled users cannot authenticate, expired rows are rejected and removed, and logout deletes the row.
 
-Health remains process-only with exactly { "status": "ok" }. Startup connects to PostgreSQL, but health does not promise ongoing database readiness. No infrastructure metadata is exposed. CORS/header behavior is unchanged.
+The session cookie is scoped to `/api`, uses `Secure` in production (or when explicitly configured), and is inaccessible to Angular. JWT was intentionally avoided: this is one browser administration client, and server-side sessions provide immediate logout, revocation and disablement without access/refresh-token machinery.
 
-## Model and constraints
+Admin passwords never enter seeds or API responses. `npm run admin:create` prompts interactively, hashes with Argon2id (`m=19456 KiB`, `t=2`, `p=1`) and revokes existing sessions when replacing a password.
 
-- Project owns ProjectSectionItem and ProjectRoadmapItem.
-- ProjectTechnology explicitly joins Project and Technology, with composite PK and unique ordered membership.
-- Profile owns Experience, Education and Skill.
-- Skill groups match actual content: PROFESSIONAL and TRAINING_AND_LAB.
-- Small scalar lists (languages, orientation, experience activities/technologies) use ordered PostgreSQL text arrays; they have no independent identity.
-- Experience.company is Cibernos; clientContext preserves the Ericsson service-context copy. Euroxanty stays separate.
-- Section title supports existing problem headings. No speculative public fields were added.
+## CSRF and request controls
 
-Unique slugs support lookup. Unique child order constraints supply parent-prefixed indexes. Published/sortOrder index supports listing; technologyId supports reverse relation checks. Owned children cascade on parent deletion; shared technologies use RESTRICT. Project order ties use ID for deterministic results.
+Unsafe auth/admin requests must have the exact configured `FRONTEND_ORIGIN`. Login is limited to five attempts per minute per tracker key using Nest’s throttler. Behind a future trusted reverse proxy, proxy/IP handling and shared rate-limit storage must be configured deliberately; the current in-memory limiter is suitable for the single local process only.
 
-## Content ownership
+Login also creates a separate random CSRF token. Its SHA-256 digest is tied to the database session; the raw value is placed in the readable `XSRF-TOKEN` cookie. Angular mirrors it in `X-XSRF-TOKEN`. Mutations require the header, cookie and stored digest to match. SameSite is defense in depth, not the only CSRF control. CORS allows credentials only from the exact configured frontend origin.
 
-PostgreSQL is the only runtime source. prisma/seed-data contains unchanged Phase 3 bootstrap content, not a runtime fallback. Obsolete src/*/*.data.ts files were removed after successful database, HTTP and frontend validation.
+`SessionAuthGuard` is the security boundary for every `/api/admin/*` endpoint. The Angular guard only redirects users for usability.
 
-The public roadmap intentionally retains Phase 3 wording: this persistence-only change must preserve public content. Editorial updates require separate review.
+## Data model and API
 
-See [backend setup](../backend/README.md) and [Phase 4 status](PHASE-4-DATABASE-PLAN.md).
+`AdminUser` owns cascading `AdminSession` rows. The only role is `ADMIN`. No public registration, password reset, OAuth, hard-delete endpoint, IP history or raw credential/session response exists.
+
+Protected endpoints:
+
+- `GET /api/admin/projects`
+- `GET /api/admin/projects/:id`
+- `POST /api/admin/projects`
+- `PATCH /api/admin/projects/:id`
+- `GET /api/admin/profile`
+- `PUT` or `PATCH /api/admin/profile`
+
+Public endpoints remain `GET /api/health`, `GET /api/projects`, `GET /api/projects/:slug` and `GET /api/profile`. Public project queries still require `published=true`; internal IDs, publication metadata, timestamps, users and sessions do not enter public responses.
+
+## Current limitations
+
+Production secrets, TLS termination, distributed session/rate-limit cleanup, reverse-proxy trust and deployment hardening belong to later phases. Phase 5 does not add Docker, CI/CD, WAF, SIEM or monitoring infrastructure.

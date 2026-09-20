@@ -18,12 +18,13 @@ decision during a job interview.
 
 ## Current Phase
 
-CURRENT PHASE: Phase 4 — PostgreSQL + Prisma.
+CURRENT PHASE: Phase 5 — Authentication / Administration.
 
 Phase 1 — Angular Frontend: COMPLETED
 Phase 2 — Portfolio Content: COMPLETED
 Phase 3 — NestJS Backend: COMPLETED
-Phase 4 — PostgreSQL + Prisma: CURRENT (validated; completed implementation).
+Phase 4 — PostgreSQL + Prisma: COMPLETED
+Phase 5 — Authentication / Administration: CURRENT
 
 Existing frontend:
 
@@ -44,28 +45,25 @@ Existing frontend:
 - Typed API-backed project and profile data
 - Passing build and tests
 
-Current Phase 4 priorities:
+Current Phase 5 priorities:
 
-1. Add PostgreSQL persistence.
-2. Integrate Prisma with NestJS.
-3. Preserve the existing REST API contract.
-4. Migrate confirmed public data using reproducible seed data.
-5. Make PostgreSQL the runtime source of truth.
-6. Add meaningful database-backed tests.
-7. Preserve Angular SSR/prerendering.
-8. Do NOT start authentication/admin.
-9. Do NOT introduce Docker.
-10. Do NOT introduce CI/CD or later phases.
+1. Add secure session-based administration.
+2. Protect all administrative APIs server-side.
+3. Preserve the existing public REST API contract.
+4. Keep PostgreSQL as the runtime source of truth.
+5. Preserve Angular SSR/prerendering for public routes.
+6. Do NOT introduce Docker, CI/CD or later phases.
 
 Current backend:
 
 - NestJS 12
 - Strict TypeScript
 - Prisma 7.10.0 / PostgreSQL persistence (validated locally)
+- Session authentication and protected administration API
 - Health, projects and profile endpoints
 - Focused endpoint tests
 
-DO NOT start Phase 5 or later phases.
+DO NOT start Phase 6 or later phases.
 
 ## Roadmap
 
@@ -74,8 +72,8 @@ Follow this exact order:
 1. Angular Frontend — completed baseline
 2. Portfolio Content — completed
 3. NestJS Backend — completed
-4. PostgreSQL + Prisma — current
-5. Administration / Authentication
+4. PostgreSQL + Prisma — completed
+5. Administration / Authentication — current
 6. Docker / Docker Compose
 7. CI/CD with GitHub Actions
 8. DevSecOps

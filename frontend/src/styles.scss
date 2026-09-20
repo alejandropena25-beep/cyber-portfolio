@@ -501,7 +501,15 @@ p {
 }
 
 .detail-content {
-  min-width: 0;
+  display: contents;
+}
+
+.detail-content > .detail-section {
+  grid-column: 1 / -1;
+}
+
+.detail-content > .detail-section:first-child {
+  grid-column: 1;
 }
 
 .detail-section {
@@ -524,8 +532,8 @@ p {
 }
 
 .project-sidebar {
-  position: sticky;
-  top: 7rem;
+  grid-column: 2;
+  grid-row: 1;
   padding: 1.5rem;
   border: 1px solid var(--border);
   border-radius: 0.65rem;
@@ -563,20 +571,21 @@ p {
   padding: 0;
   margin-block: 1.5rem;
   list-style: none;
-  overflow-x: auto;
 }
 
 .architecture-flow li {
   display: flex;
-  align-items: center;
+  align-items: stretch;
+  flex: 1 1 0;
   min-width: 0;
 }
 
 .architecture-flow li > span:first-child {
   display: grid;
   place-items: center;
-  min-width: 8.5rem;
-  min-height: 4.5rem;
+  width: 100%;
+  min-width: 0;
+  min-height: 5rem;
   padding: 0.75rem;
   border: 1px solid #587844;
   border-radius: 0.45rem;
@@ -584,10 +593,15 @@ p {
   text-align: center;
   font-size: 0.9rem;
   font-weight: 650;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .flow-arrow {
-  padding-inline: 0.6rem;
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  padding-inline: clamp(0.35rem, 1vw, 0.75rem);
   color: var(--accent);
   transform: rotate(-90deg);
   font-size: 1.25rem;
@@ -681,8 +695,33 @@ p {
   }
 
   .project-sidebar {
-    position: static;
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .detail-content > .detail-section:first-child {
+    grid-column: 1 / -1;
     grid-row: 1;
+  }
+}
+
+@media (max-width: 900px) {
+  .architecture-flow {
+    flex-direction: column;
+  }
+
+  .architecture-flow li {
+    width: min(100%, 30rem);
+    flex-direction: column;
+  }
+
+  .architecture-flow li > span:first-child {
+    min-height: 3.75rem;
+  }
+
+  .flow-arrow {
+    transform: none;
+    padding-block: 0.4rem;
   }
 }
 
@@ -718,25 +757,6 @@ p {
     margin-bottom: 0.5rem;
   }
 
-  .architecture-flow {
-    flex-direction: column;
-    overflow: visible;
-  }
-
-  .architecture-flow li {
-    flex-direction: column;
-  }
-
-  .architecture-flow li > span:first-child {
-    width: 100%;
-    min-height: 3.5rem;
-  }
-
-  .flow-arrow {
-    transform: none;
-    padding-block: 0.35rem;
-  }
-
   .project-meta {
     align-items: flex-start;
     flex-direction: column;
@@ -750,5 +770,140 @@ p {
       color 150ms,
       background-color 150ms,
       border-color 150ms;
+  }
+}
+
+.admin-login {
+  width: min(32rem, 100%);
+  margin: clamp(2rem, 8vw, 6rem) auto;
+}
+
+.admin-login h1,
+.admin-shell h1 {
+  font-size: clamp(2rem, 5vw, 3.5rem);
+}
+
+.admin-login form,
+.admin-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.admin-shell {
+  padding-bottom: 4rem;
+}
+
+.admin-header,
+.admin-panel-heading,
+.admin-actions,
+.admin-list .card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.admin-nav {
+  margin-bottom: 2rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.admin-panel {
+  padding: clamp(1rem, 3vw, 2rem);
+  border: 1px solid var(--border);
+  border-radius: 0.65rem;
+  background: #111815;
+}
+
+.admin-actions,
+.admin-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.admin-actions a {
+  text-decoration: none;
+}
+
+.admin-list {
+  grid-template-columns: 1fr;
+}
+
+.admin-list .card h3,
+.admin-list .card p {
+  margin-block: 0.25rem;
+}
+
+.admin-form label,
+.admin-login label {
+  display: grid;
+  gap: 0.35rem;
+  color: var(--muted);
+  font-weight: 650;
+}
+
+.admin-form input,
+.admin-form textarea,
+.admin-form select,
+.admin-login input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.35rem;
+  background: #0d1210;
+  color: #eef2ef;
+  font: inherit;
+}
+
+.admin-form textarea {
+  min-height: 7rem;
+  resize: vertical;
+}
+
+.admin-form .code-field {
+  min-height: 18rem;
+  font-family: ui-monospace, monospace;
+  font-size: 0.85rem;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.admin-form .checkbox {
+  display: flex;
+  align-items: center;
+}
+
+.admin-form .checkbox input {
+  width: auto;
+}
+
+.form-error {
+  color: #ffb4ab;
+}
+.form-success {
+  color: var(--accent);
+}
+.form-help {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 700px) {
+  .admin-header,
+  .admin-panel-heading,
+  .admin-list .card {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .admin-actions,
+  .form-grid {
+    grid-template-columns: 1fr;
   }
 }

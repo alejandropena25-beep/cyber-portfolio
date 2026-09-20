@@ -1,6 +1,47 @@
 import { Routes } from '@angular/router';
+import { adminGuard } from './admin/admin.guard';
 
 export const routes: Routes = [
+  {
+    path: 'admin/login',
+    title: 'Acceso administrativo',
+    data: { robots: 'noindex,nofollow' },
+    loadComponent: () => import('./admin/admin-login').then((module) => module.AdminLogin),
+  },
+  {
+    path: 'admin',
+    data: { robots: 'noindex,nofollow' },
+    canActivate: [adminGuard],
+    loadComponent: () => import('./admin/admin-shell').then((module) => module.AdminShell),
+    children: [
+      {
+        path: '',
+        pathMatch: 'full',
+        loadComponent: () =>
+          import('./admin/admin-dashboard').then((module) => module.AdminDashboard),
+      },
+      {
+        path: 'projects',
+        loadComponent: () =>
+          import('./admin/admin-projects').then((module) => module.AdminProjects),
+      },
+      {
+        path: 'projects/new',
+        loadComponent: () =>
+          import('./admin/admin-project-editor').then((module) => module.AdminProjectEditor),
+      },
+      {
+        path: 'projects/:id/edit',
+        loadComponent: () =>
+          import('./admin/admin-project-editor').then((module) => module.AdminProjectEditor),
+      },
+      {
+        path: 'profile',
+        loadComponent: () =>
+          import('./admin/admin-profile').then((module) => module.AdminProfileEditor),
+      },
+    ],
+  },
   {
     path: '',
     pathMatch: 'full',

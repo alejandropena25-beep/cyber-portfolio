@@ -1,6 +1,6 @@
 ﻿# Phase 4 - PostgreSQL + Prisma
 
-Status: COMPLETE - validated on local PostgreSQL 18 with Node 24.19.0. Phase 4 remains the current phase; Phase 5 has not started.
+Status: COMPLETE - validated on local PostgreSQL 18 with Node 24.19.0. Phase 5 is now current.
 
 ## Delivered
 
@@ -26,4 +26,4 @@ Prisma latest tag points to 8.0.0-rc.15; stable 7.10.0 was retained. Prisma/engi
 
 Review upstream Prisma dependency fixes before deployment. Public portfolio roadmap copy intentionally retains Phase 3 wording to preserve the requested content contract; updating claims is separate editorial work.
 
-No authentication, Docker, CI/CD or later phases were started. No commits or pushes. Credentials remain local in ignored backend/.env.
+Phase 4 was completed before authentication work began. No Docker, CI/CD or later phases were started. No commits or pushes. Credentials remain local in ignored backend/.env.
