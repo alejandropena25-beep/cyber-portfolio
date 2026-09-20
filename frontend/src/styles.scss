@@ -161,18 +161,20 @@ p {
 }
 
 .hero {
-  padding-block: clamp(1rem, 5vw, 4rem);
+  padding-block: clamp(2.5rem, 6vh, 4.5rem);
 }
 
 .hero h1 {
-  max-width: 16ch;
-  font-size: clamp(3.1rem, 8vw, 6.8rem);
+  max-width: 20ch;
+  font-size: clamp(3rem, 5.5vw, 5.6rem);
+  line-height: 0.98;
+  margin-block: 1rem 1.25rem;
 }
 
 .hero-support {
-  max-width: 65ch;
+  max-width: 62ch;
   color: var(--muted);
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
 }
 
 .accent {
@@ -723,9 +725,24 @@ p {
     transform: none;
     padding-block: 0.4rem;
   }
+
+  .hero h1 {
+    max-width: 18ch;
+    font-size: clamp(3rem, 8vw, 5rem);
+  }
 }
 
 @media (max-width: 700px) {
+  .hero {
+    padding-block: 2.5rem;
+  }
+
+  .hero h1 {
+    max-width: 100%;
+    font-size: clamp(2.7rem, 12vw, 4rem);
+    line-height: 1;
+  }
+
   .container {
     width: min(100% - 2rem, 1120px);
   }
