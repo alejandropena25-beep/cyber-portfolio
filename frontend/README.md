@@ -1,29 +1,45 @@
 # Cyber Portfolio — Frontend
 
-Aplicación Angular del portfolio profesional de Alejandro Peña. Consume la API NestJS situada en `../backend`.
+Aplicación Angular 22 con TypeScript, SCSS, componentes standalone y Angular SSR. Consume la API NestJS de `../backend`.
 
-## Stack
+## Desarrollo nativo
 
-Angular 22, TypeScript, SCSS, Angular Router, componentes standalone y SSR / prerenderizado.
+Inicia primero el backend en el puerto 3000:
 
-## Desarrollo
-
-Primero inicia el backend en el puerto 3000. Después:
-
-```bash
-npm install
+```powershell
+npm ci
 npm start
 ```
 
-Angular se sirve en `http://localhost:4200` y el proxy de desarrollo dirige `/api` a NestJS.
+Angular se sirve en `http://localhost:4200` y el proxy dirige `/api` hacia NestJS. `public/runtime-config.js` mantiene `/api` como valor predeterminado para este flujo.
 
 ## Build y tests
 
-```bash
+```powershell
 npm test -- --watch=false
 npm run build
 ```
 
-El backend debe estar disponible en `127.0.0.1:3000` durante el build para que el prerender pueda obtener los proyectos y sus rutas.
+El build de producción ya no necesita una API o base activa. Las rutas públicas con nombre usan `RenderMode.Server` y se resuelven cuando llega una petición. `/admin/**` usa renderizado cliente. El wildcard 404 usa `RenderMode.Prerender`; como sus URL no se pueden enumerar, el recuento esperado sigue siendo cero rutas prerenderizadas, mientras que una URL desconocida conserva HTTP 404 en ejecución.
 
-La arquitectura, los endpoints y el roadmap se documentan en el [README principal](../README.md).
+## Docker SSR
+
+`frontend/Dockerfile` instala con `npm ci`, construye Angular en una etapa separada e instala solo dependencias de producción para el runtime. La imagen ejecuta `dist/frontend/server/server.mjs`, no `ng serve`, como el usuario no privilegiado `node`.
+
+Compose configura dos URL distintas:
+
+- `BROWSER_API_BASE_URL=http://localhost:3000/api`: accesible desde el navegador del usuario y expuesta mediante `/runtime-config.js`.
+- `SERVER_API_BASE_URL=http://backend:3000/api`: resoluble únicamente por Angular SSR dentro de la red Docker.
+
+El interceptor XSRF de la API permite que las mutaciones autenticadas sigan enviando `X-XSRF-TOKEN` cuando navegador y API usan puertos distintos. Cookies con credenciales, CORS exacto y la validación de Origin del backend permanecen activos.
+
+Desde la raíz del repositorio:
+
+```powershell
+Copy-Item .env.docker.example .env.docker
+docker compose --env-file .env.docker up --build
+```
+
+Abre `http://localhost:4200`. El healthcheck solicita la raíz SSR con `fetch` de Node. Compose aplica sistema raíz de solo lectura, `/tmp` temporal, capacidades eliminadas, `no-new-privileges` e init.
+
+La arquitectura completa y el ciclo operativo están en [PHASE-6-DOCKER-PLAN.md](../docs/PHASE-6-DOCKER-PLAN.md).

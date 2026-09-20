@@ -47,10 +47,14 @@ async function hiddenPassword(prompt: string): Promise<string> {
 
 async function main(): Promise<void> {
   const target = new URL(databaseUrl());
-  if (
+  const invalidLocalTarget =
     !["localhost", "127.0.0.1", "[::1]"].includes(target.hostname) ||
-    target.pathname !== "/cyber_portfolio"
-  )
+    target.pathname !== "/cyber_portfolio";
+  const dockerTarget =
+    process.env["DATABASE_OPERATION_MODE"] === "docker" &&
+    target.hostname === "database" &&
+    target.pathname === "/cyber_portfolio";
+  if (invalidLocalTarget && !dockerTarget)
     throw new Error(
       "Admin creation is restricted to the named local development database.",
     );

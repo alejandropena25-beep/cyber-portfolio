@@ -4,6 +4,13 @@ import { environment } from '../../environments/environment';
 
 export const API_BASE_URL = new InjectionToken<string>('API_BASE_URL', {
   providedIn: 'root',
-  factory: () =>
-    isPlatformServer(inject(PLATFORM_ID)) ? environment.serverApiBaseUrl : environment.apiBaseUrl,
+  factory: () => {
+    if (isPlatformServer(inject(PLATFORM_ID))) return environment.serverApiBaseUrl;
+    const runtimeConfig = (
+      globalThis as typeof globalThis & {
+        __CYBER_PORTFOLIO_CONFIG__?: { apiBaseUrl?: string };
+      }
+    ).__CYBER_PORTFOLIO_CONFIG__;
+    return runtimeConfig?.apiBaseUrl ?? environment.apiBaseUrl;
+  },
 });

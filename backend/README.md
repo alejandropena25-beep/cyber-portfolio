@@ -1,42 +1,10 @@
 # Cyber Portfolio - Backend
 
-Phase 5: NestJS -> Prisma 7.10.0 -> PostgreSQL, with session authentication and protected administration. The Phase 4 public API contract remains unchanged.
+NestJS 12, Prisma 7.10.0 and PostgreSQL 18, with session authentication and a protected administration API. Phase 6 adds a production-oriented runtime image and a separate operational-tooling target.
 
-## Local database prerequisite (Windows)
+## Native development
 
-PostgreSQL 18 is installed and running. Connect using your local administrator password entered interactively:
-
-```powershell
-& 'C:\Program Files\PostgreSQL\18\bin\psql.exe' -X -h localhost -U postgres -d postgres
-```
-
-Check existing databases/roles with `\l` and `\du`. For a fresh setup, execute the following in psql; do not recreate/reset existing databases:
-
-```sql
-CREATE ROLE portfolio_dev LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE;
-\password portfolio_dev
-CREATE ROLE portfolio_test LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE;
-\password portfolio_test
-CREATE DATABASE cyber_portfolio OWNER portfolio_dev;
-CREATE DATABASE cyber_portfolio_test OWNER portfolio_test;
-REVOKE CONNECT ON DATABASE cyber_portfolio FROM PUBLIC;
-REVOKE CONNECT ON DATABASE cyber_portfolio_test FROM PUBLIC;
-```
-
-Use separate local credentials. Each role owns only its database; migrations need DDL privileges. Do not use postgres superuser for the application. Production roles are a later decision.
-
-From backend/, copy .env.example to .env and replace placeholders locally. Never paste credentials into chat or commit them. Percent-encode special characters in URL credentials. Node 24 loads .env using its built-in loader; existing process environment takes precedence.
-
-- DATABASE_URL: local cyber_portfolio connection.
-- TEST_DATABASE_URL: local cyber_portfolio_test, separate credentials, only optional schema=public query parameter.
-- PORT: optional API port, default 3000.
-- FRONTEND_ORIGIN: exact allowed browser origin; defaults to `http://localhost:4200`.
-- SESSION_COOKIE_SECURE: use `false` only for localhost HTTP; production forces Secure cookies.
-- SESSION_TTL_HOURS: positive session lifetime, default 8.
-
-## Bootstrap and startup order
-
-With PostgreSQL running, from backend/:
+For host development, PostgreSQL 18 must be running locally. Copy `.env.example` to `.env`, replace placeholders, and keep separate least-privilege roles/databases for development and tests. Never use the PostgreSQL superuser as the application role or commit credentials.
 
 ```powershell
 npm ci
@@ -50,41 +18,57 @@ npm test
 npm run start:dev
 ```
 
-Migrations use prisma migrate deploy: no reset or shadow database. The initial SQL was generated from the schema without a database connection.
+`npm run admin:create` prompts for an email and a masked password, requires at least 12 characters, stores only an Argon2id hash and revokes earlier sessions for that account. It is restricted to the expected local database unless the explicit Docker operation mode is active.
 
-Seed execution is restricted to local cyber_portfolio or cyber_portfolio_test. It upserts confirmed projects/profile and replaces their children in one transaction. Rerunning restores bootstrap content and publication flags for those records; it is not an ongoing editing tool. Unrelated projects and unused technologies remain. Child numeric IDs may change; they are private.
+Tests require `TEST_DATABASE_URL`, apply migrations and seed their dedicated test database, restore temporary mutations, and never fall back to the development database.
 
-Start Angular from frontend/ with npm start. Browser requests use the development proxy; SSR uses http://127.0.0.1:3000/api.
+## Docker image
 
-`npm run admin:create` is intentionally interactive and restricted to local `cyber_portfolio`. It prompts for an email and masked password, creates or updates the administrator with Argon2id, and revokes that account's existing sessions. Never add administrator credentials to seeds, environment examples or source files.
+`backend/Dockerfile` uses these stages:
 
-## Authentication and administration
+- `dependencies`: reproducible complete install with `npm ci`.
+- `build`: generates Prisma Client for Linux and compiles NestJS.
+- `production-dependencies`: installs runtime-only dependencies.
+- `runtime`: contains only production dependencies and `dist`, and runs as `node`.
+- `tools`: retains Prisma/TypeScript tooling for migration, seed and interactive admin creation.
 
-Login creates independent random 256-bit session and CSRF tokens. Only SHA-256 digests are stored in `AdminSession`. The raw session token is sent solely in an HttpOnly, SameSite=Strict cookie scoped to `/api`; it is Secure in production. Logout deletes the session, and expired or disabled-user sessions cannot authenticate.
+The normal application image does not contain the Prisma CLI, test fixtures, TypeScript source, local `.env` or host `node_modules`.
 
-Unsafe requests require the exact configured Origin. Authenticated mutations also require the readable `XSRF-TOKEN` cookie to match `X-XSRF-TOKEN` and the digest tied to the session. Login is limited to five requests per minute with the Nest throttler. This limiter uses process memory and the observed request IP; a later reverse-proxy/multi-instance deployment must configure trusted proxy handling and shared limiter storage.
-
-All `/api/admin/*` routes use the server-side session guard. Project and profile aggregate writes use Prisma transactions. The Angular guard is only a navigation convenience.
-
-Auth routes are `/api/auth/login`, `/api/auth/logout` and `/api/auth/me`. Admin routes cover project list/detail/create/update and profile read/update. There is no registration, password-reset, OAuth or hard-delete endpoint.
-
-## Validation
-
-npm test refuses to run without the explicit local test URL, never falls back to development, applies migrations and seeds the test database. No reset/truncate is used. Tests restore temporary content mutations and leave bootstrap records seeded. Reserve this database exclusively for tests. Coverage compares all Phase 3 fields, verifies malformed/unknown/unpublished slugs, live database changes and ordering, relation uniqueness and seed idempotency.
-
-Keep PostgreSQL and the database-backed API running, then from frontend/:
+At the repository root:
 
 ```powershell
-npm test -- --watch=false
-npm run build
+Copy-Item .env.docker.example .env.docker
+docker compose --env-file .env.docker up --build
+docker compose --env-file .env.docker --profile tools run --rm admin-create
 ```
 
-Verify all four prerendered project routes. Do not disable prerender to work around missing database access.
+The container database URL must use host `database`, never `localhost`. PostgreSQL is reachable only on Compose's internal `data` network.
 
-## Prisma and audit
+## Migration and seed lifecycle
 
-Prisma 7.10.0 was the newest stable Prisma 7 release returned by npm; latest pointed to an 8.0.0 release candidate. Uses prisma-client with explicit output, CommonJS matching NestJS, prisma.config.ts and @prisma/adapter-pg. The adapter supplies the PostgreSQL driver dependency. No additional ORM or dotenv package.
+The `migrate` one-shot service runs `prisma migrate deploy` after PostgreSQL is healthy. No container runs `migrate dev`, reset or destructive recreation. The backend cannot start if migration fails.
 
-Both full and production-only npm audits reported 4 high findings: prisma, @prisma/config, deepmerge-ts and mysql2. Underlying advisories concern recursive merge exhaustion and MySQL authentication/compression. These originate in Prisma CLI dependencies, also retained by its peer graph in the production audit. CLI origin does not mean a clean production audit. npm suggested downgrade to 6.19.3; no forced fix or unverified major override was applied. Review upstream fixes before deployment.
+The `seed` service then invokes the existing deterministic seed with `SEED_IF_EMPTY=true`. It initializes a fresh database, skips an already populated database and fails on a partial state. This preserves edits across restarts instead of resetting them. It never creates an administrator, session or credential.
 
-Install warned about unapproved scripts for Prisma/engines and existing parcel/watcher and unrs-resolver. Generation/build succeeded despite these warnings. See the phase document for actual validation status.
+## Authentication and local Docker
+
+Docker publishes the API at `http://localhost:3000/api` and accepts only the exact configured `FRONTEND_ORIGIN`. Local HTTP uses the explicit `SESSION_COOKIE_SECURE=false` setting; production mode still forces secure cookies. HttpOnly session cookies, SameSite, Origin validation, CSRF cookie/header verification and server-side admin guards remain enabled.
+
+## Health and shutdown
+
+The backend healthcheck calls `GET /api/health` using Node's built-in `fetch`. The image runs as non-root; Compose adds a read-only root filesystem, `/tmp` tmpfs, `no-new-privileges`, dropped capabilities and an init process. Nest shutdown hooks close Prisma on SIGTERM.
+
+## API
+
+Public routes are `GET /api/health`, `/api/projects`, `/api/projects/:slug` and `/api/profile`. Auth routes are `/api/auth/login`, `/api/auth/logout` and `/api/auth/me`. Protected `/api/admin/*` routes manage projects and profile data.
+
+## Audits
+
+Run both dependency views without forcing changes:
+
+```powershell
+npm audit
+npm audit --omit=dev
+```
+
+Do not use `npm audit fix --force`. Prisma CLI/peer-graph advisories must be assessed against compatible upstream releases rather than hidden by an unverified downgrade.

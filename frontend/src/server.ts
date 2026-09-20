@@ -12,6 +12,16 @@ const browserDistFolder = join(import.meta.dirname, '../browser');
 const app = express();
 const angularApp = new AngularNodeAppEngine();
 
+app.get('/runtime-config.js', (_request, response) => {
+  const config = {
+    apiBaseUrl: process.env['BROWSER_API_BASE_URL'] ?? '/api',
+  };
+  response
+    .type('application/javascript')
+    .set('Cache-Control', 'no-store')
+    .send(`globalThis.__CYBER_PORTFOLIO_CONFIG__ = ${JSON.stringify(config)};`);
+});
+
 /**
  * Example Express Rest API endpoints can be defined here.
  * Uncomment and define endpoints as necessary.
@@ -41,9 +51,7 @@ app.use(
 app.use((req, res, next) => {
   angularApp
     .handle(req)
-    .then((response) =>
-      response ? writeResponseToNodeResponse(response, res) : next(),
-    )
+    .then((response) => (response ? writeResponseToNodeResponse(response, res) : next()))
     .catch(next);
 });
 

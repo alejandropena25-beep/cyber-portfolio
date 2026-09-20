@@ -18,13 +18,14 @@ decision during a job interview.
 
 ## Current Phase
 
-CURRENT PHASE: Phase 5 — Authentication / Administration.
+CURRENT PHASE: Phase 6 — Docker / Containerization.
 
 Phase 1 — Angular Frontend: COMPLETED
 Phase 2 — Portfolio Content: COMPLETED
 Phase 3 — NestJS Backend: COMPLETED
 Phase 4 — PostgreSQL + Prisma: COMPLETED
-Phase 5 — Authentication / Administration: CURRENT
+Phase 5 — Authentication / Administration: COMPLETED
+Phase 6 — Docker / Containerization: CURRENT
 
 Existing frontend:
 
@@ -45,14 +46,18 @@ Existing frontend:
 - Typed API-backed project and profile data
 - Passing build and tests
 
-Current Phase 5 priorities:
+Current Phase 6 priorities:
 
-1. Add secure session-based administration.
-2. Protect all administrative APIs server-side.
-3. Preserve the existing public REST API contract.
-4. Keep PostgreSQL as the runtime source of truth.
-5. Preserve Angular SSR/prerendering for public routes.
-6. Do NOT introduce Docker, CI/CD or later phases.
+1. Containerize Angular SSR.
+2. Containerize NestJS.
+3. Containerize PostgreSQL.
+4. Add reproducible Docker Compose orchestration.
+5. Make database migration and seed reproducible.
+6. Preserve authentication and administration.
+7. Preserve public SSR and SEO.
+8. Minimize container privileges and attack surface.
+9. Preserve normal host-based development.
+10. Do NOT start Phase 7.
 
 Current backend:
 
@@ -63,7 +68,7 @@ Current backend:
 - Health, projects and profile endpoints
 - Focused endpoint tests
 
-DO NOT start Phase 6 or later phases.
+DO NOT start Phase 7 or later phases.
 
 ## Roadmap
 
@@ -73,8 +78,8 @@ Follow this exact order:
 2. Portfolio Content — completed
 3. NestJS Backend — completed
 4. PostgreSQL + Prisma — completed
-5. Administration / Authentication — current
-6. Docker / Docker Compose
+5. Administration / Authentication — completed
+6. Docker / Docker Compose — current
 7. CI/CD with GitHub Actions
 8. DevSecOps
 9. Kubernetes

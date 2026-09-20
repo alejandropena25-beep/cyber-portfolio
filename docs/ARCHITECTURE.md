@@ -1,44 +1,69 @@
 # Current Architecture
 
-Phase 5 adds session-based authentication and administration to the existing Angular -> NestJS -> Prisma -> PostgreSQL system. Public API response models and published-only filtering remain unchanged.
+Phase 6 packages the Phase 5 Angular, NestJS, Prisma and PostgreSQL system as a production-like local Docker stack. Public API response models and server-side authentication boundaries remain unchanged.
 
-## Runtime boundaries
+## Container topology
 
-Browser requests use `/api` through the Angular development proxy. Public SSR/prerender calls `http://127.0.0.1:3000/api`; private `/admin/**` routes use client rendering and are neither prerendered nor supplied authenticated data during SSR.
+```text
+Browser
+  ├── :4200 ── frontend (Angular SSR) ──┐
+  └── :3000 ── backend (NestJS) ◄───────┘ web network
+                    │
+                    │ data network (internal)
+                    ▼
+              database (PostgreSQL 18)
+```
 
-NestJS uses one shared `PrismaService`. Public `ProjectsModule` and `ProfileModule` still return explicit public mappers. The protected `AdminModule` exposes editable aggregates and uses transactions when replacing a project’s technologies, sections and roadmap or the profile’s experience, education and skills.
+The browser API URL is `http://localhost:3000/api`; Docker service names are not resolvable by a user's browser. Server rendering uses `http://backend:3000/api` through Compose DNS. NestJS reaches PostgreSQL at `database:5432`. PostgreSQL belongs only to the internal `data` network and has no host-published port.
 
-## Authentication
+## Startup lifecycle
 
-`POST /api/auth/login` verifies an Argon2id password and creates a PostgreSQL `AdminSession`. The browser receives a random 256-bit session token in an HttpOnly, SameSite=Strict cookie; only its SHA-256 digest is stored. Sessions expire after `SESSION_TTL_HOURS` (eight hours by default), disabled users cannot authenticate, expired rows are rejected and removed, and logout deletes the row.
+Compose enforces this dependency chain:
 
-The session cookie is scoped to `/api`, uses `Secure` in production (or when explicitly configured), and is inaccessible to Angular. JWT was intentionally avoided: this is one browser administration client, and server-side sessions provide immediate logout, revocation and disablement without access/refresh-token machinery.
+```text
+database healthy
+  → migrate completed (`prisma migrate deploy`)
+  → seed completed
+  → backend healthy
+  → frontend
+```
 
-Admin passwords never enter seeds or API responses. `npm run admin:create` prompts interactively, hashes with Argon2id (`m=19456 KiB`, `t=2`, `p=1`) and revokes existing sessions when replacing a password.
+`migrate`, `seed` and the opt-in `admin-create` command reuse the backend `tools` image. The normal backend runtime omits Prisma CLI, TypeScript source and development dependencies. A migration or seed failure is visible and blocks application startup.
 
-## CSRF and request controls
+The seed accepts the Docker database only when `DATABASE_OPERATION_MODE=docker`. With `SEED_IF_EMPTY=true`, it seeds a completely empty database, skips an already populated database and rejects a partially populated state. This prevents a normal restart from overwriting edits made through administration. Administrator creation remains an explicit interactive Argon2id workflow and never belongs to the seed.
 
-Unsafe auth/admin requests must have the exact configured `FRONTEND_ORIGIN`. Login is limited to five attempts per minute per tracker key using Nest’s throttler. Behind a future trusted reverse proxy, proxy/IP handling and shared rate-limit storage must be configured deliberately; the current in-memory limiter is suitable for the single local process only.
+## Angular rendering and API configuration
 
-Login also creates a separate random CSRF token. Its SHA-256 digest is tied to the database session; the raw value is placed in the readable `XSRF-TOKEN` cookie. Angular mirrors it in `X-XSRF-TOKEN`. Mutations require the header, cookie and stored digest to match. SameSite is defense in depth, not the only CSRF control. CORS allows credentials only from the exact configured frontend origin.
+Named public pages use `RenderMode.Server`: home, projects, project detail, about and contact. They render current database state on each request and preserve SEO without requiring NestJS/PostgreSQL during the frontend image build. `/admin/**` uses `RenderMode.Client`, so private content is never rendered or embedded by the SSR server. The wildcard 404 keeps `RenderMode.Prerender`. It has no finite paths to emit, so the intentional build result is zero prerendered routes, while unknown URLs retain HTTP 404.
 
-`SessionAuthGuard` is the security boundary for every `/api/admin/*` endpoint. The Angular guard only redirects users for usability.
+Browser configuration is loaded from `/runtime-config.js`. In Docker, the SSR Express server generates this response from `BROWSER_API_BASE_URL`; in native Angular development the public default keeps `/api`. The server-side injector independently reads `SERVER_API_BASE_URL`. A focused API XSRF interceptor mirrors `XSRF-TOKEN` for unsafe calls to the configured absolute API origin, preserving Phase 5 CSRF behavior when the Docker browser uses separate ports.
 
-## Data model and API
+Angular SSR's host allowlist contains only the documented local entry points, `localhost` and `127.0.0.1`. SSRF host validation remains enabled; a future deployed hostname must be added deliberately with its deployment configuration.
 
-`AdminUser` owns cascading `AdminSession` rows. The only role is `ADMIN`. No public registration, password reset, OAuth, hard-delete endpoint, IP history or raw credential/session response exists.
+## Authentication boundaries
 
-Protected endpoints:
+NestJS remains the security boundary. Session and CSRF tokens are random, only digests are stored, and every `/api/admin/*` endpoint uses `SessionAuthGuard`. The session token remains HttpOnly and the CSRF cookie/header pair remains mandatory for authenticated mutations. CORS and unsafe-request Origin validation use the exact `FRONTEND_ORIGIN`.
 
-- `GET /api/admin/projects`
-- `GET /api/admin/projects/:id`
-- `POST /api/admin/projects`
-- `PATCH /api/admin/projects/:id`
-- `GET /api/admin/profile`
-- `PUT` or `PATCH /api/admin/profile`
+The Compose profile is local HTTP, so `SESSION_COOKIE_SECURE=false` is explicit configuration and `NODE_ENV=development` permits it. The image itself defaults to production, where the backend forces secure cookies. TLS and an edge reverse proxy remain later-phase concerns.
 
-Public endpoints remain `GET /api/health`, `GET /api/projects`, `GET /api/projects/:slug` and `GET /api/profile`. Public project queries still require `published=true`; internal IDs, publication metadata, timestamps, users and sessions do not enter public responses.
+## Image and runtime security
 
-## Current limitations
+Both application Dockerfiles use pinned Node 24 Debian slim images and multi-stage builds. Dependencies are installed with `npm ci`; Prisma Client is generated in the Linux backend build stage. Runtime stages copy only production dependencies and compiled output, and execute as the built-in `node` user.
 
-Production secrets, TLS termination, distributed session/rate-limit cleanup, reverse-proxy trust and deployment hardening belong to later phases. Phase 5 does not add Docker, CI/CD, WAF, SIEM or monitoring infrastructure.
+Compose enables `init`, `no-new-privileges`, `cap_drop: ALL`, read-only application root filesystems and a small `noexec,nosuid` `/tmp` tmpfs. No source tree, Docker socket or privileged/host networking is mounted. PostgreSQL keeps its required writable volume and is not forced into application-specific filesystem restrictions.
+
+## Persistence and configuration
+
+`postgres_data` is mounted at `/var/lib/postgresql`, the PostgreSQL 18 image's version-aware storage parent. `docker compose down` preserves it; only an intentional `down -v` deletes it.
+
+Real values live in the ignored `.env.docker`; the tracked `.env.docker.example` contains placeholders only. Images do not copy `.env*`, host `node_modules`, build output, coverage, logs, Git metadata or test output because each build context has a restrictive `.dockerignore`.
+
+## Signals, health and logs
+
+NestJS enables shutdown hooks, allowing Prisma to disconnect during SIGTERM-driven shutdown. Compose's init process forwards signals and reaps children. Containers log to stdout/stderr.
+
+PostgreSQL uses `pg_isready`; backend health calls `/api/health`; frontend health requests the SSR root with Node's built-in `fetch`. No healthcheck-only package is installed.
+
+## Phase boundary
+
+This phase adds containerization only. It does not add CI/CD, registry publishing, Kubernetes, reverse proxy, WAF, SIEM, observability or deployment automation.

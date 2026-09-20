@@ -1,0 +1,180 @@
+name: cyber-portfolio
+
+services:
+  database:
+    image: postgres:18-bookworm
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in .env.docker}
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in .env.docker}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.docker}
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - data
+    restart: unless-stopped
+
+  migrate:
+    build:
+      context: ./backend
+      target: tools
+    image: cyber-portfolio-backend-tools:phase6
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env.docker}
+      DATABASE_OPERATION_MODE: docker
+    command: ["npm", "run", "db:migrate"]
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - data
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: "no"
+
+  seed:
+    image: cyber-portfolio-backend-tools:phase6
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env.docker}
+      DATABASE_OPERATION_MODE: docker
+      SEED_IF_EMPTY: "true"
+    command: ["npm", "run", "db:seed"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - data
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: "no"
+
+  backend:
+    build:
+      context: ./backend
+      target: runtime
+    image: cyber-portfolio-backend:phase6
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env.docker}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:4200}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
+      SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-8}
+    ports:
+      - "${BACKEND_PORT:-3000}:3000"
+    depends_on:
+      database:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      seed:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - web
+      - data
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      target: runtime
+    image: cyber-portfolio-frontend:phase6
+    environment:
+      NODE_ENV: production
+      PORT: 4200
+      BROWSER_API_BASE_URL: ${BROWSER_API_BASE_URL:-http://localhost:3000/api}
+      SERVER_API_BASE_URL: http://backend:3000/api
+    ports:
+      - "${FRONTEND_PORT:-4200}:4200"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:4200/').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    networks:
+      - web
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+
+  admin-create:
+    profiles: ["tools"]
+    image: cyber-portfolio-backend-tools:phase6
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env.docker}
+      DATABASE_OPERATION_MODE: docker
+    command: ["npm", "run", "admin:create"]
+    depends_on:
+      database:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      seed:
+        condition: service_completed_successfully
+    networks:
+      - data
+    stdin_open: true
+    tty: true
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: "no"
+
+networks:
+  web:
+    driver: bridge
+  data:
+    driver: bridge
+    internal: true
+
+volumes:
+  postgres_data:
