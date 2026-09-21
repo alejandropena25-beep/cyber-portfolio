@@ -96,11 +96,12 @@ Public routes are `GET /api/health`, `/api/projects`, `/api/projects/:slug` and 
 
 ## Audits
 
-Run both dependency views without forcing changes:
+The root Phase 8 policy runs the complete backend and frontend audits, prints their JSON findings and enforces exact expiring exceptions:
 
 ```powershell
-npm audit
-npm audit --omit=dev
+node scripts/ci/security-audit.mjs
 ```
 
-Do not use `npm audit fix --force`. Prisma CLI/peer-graph advisories must be assessed against compatible upstream releases rather than hidden by an unverified downgrade.
+The current backend baseline identifies three underlying Prisma-tooling advisories in `deepmerge-ts@7.1.5` and `mysql2@3.15.3`; their propagation produces npm's four high vulnerable-package count. They remain visible and expire for review on 2026-10-20. The project uses PostgreSQL, but unused MySQL paths are risk context rather than grounds for hiding packages.
+
+Do not use `npm audit fix --force`, downgrade Prisma or add speculative overrides. Prisma CLI/peer-graph advisories must be resolved through a compatible Prisma/client update that passes generation, build, PostgreSQL e2e and image validation.

@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "exceptions": [
+    {
+      "project": "backend",
+      "advisory": "GHSA-ggr8-5vv4-36mx",
+      "package": "deepmerge-ts",
+      "version": "7.1.5",
+      "nodePath": "node_modules/deepmerge-ts",
+      "severity": "high",
+      "status": "accepted-temporary",
+      "owner": "repository owner",
+      "created": "2026-09-20",
+      "expires": "2026-10-20",
+      "rationale": "Transitive Prisma 7.10.0 configuration dependency; npm offers only an incompatible Prisma 6 downgrade and no validated Prisma 7 remediation is currently available.",
+      "remediation": "Review each compatible Prisma release, upgrade Prisma and its client together when the dependency is fixed, then remove this exception after the full backend validation passes."
+    },
+    {
+      "project": "backend",
+      "advisory": "GHSA-3f6p-5ww8-9rcr",
+      "package": "mysql2",
+      "version": "3.15.3",
+      "nodePath": "node_modules/mysql2",
+      "severity": "high",
+      "status": "accepted-temporary",
+      "owner": "repository owner",
+      "created": "2026-09-20",
+      "expires": "2026-10-20",
+      "rationale": "Transitive Prisma CLI dependency in a PostgreSQL-only project; the affected MySQL authentication path is not used, but the package remains visible and tracked until Prisma supplies a compatible update.",
+      "remediation": "Review each compatible Prisma release, verify the tooling image and PostgreSQL workflows, upgrade when Prisma removes the affected mysql2 version, and delete this exception."
+    },
+    {
+      "project": "backend",
+      "advisory": "GHSA-rgwj-5xj2-c3m3",
+      "package": "mysql2",
+      "version": "3.15.3",
+      "nodePath": "node_modules/mysql2",
+      "severity": "moderate",
+      "status": "accepted-temporary",
+      "owner": "repository owner",
+      "created": "2026-09-20",
+      "expires": "2026-10-20",
+      "rationale": "Transitive Prisma CLI dependency in a PostgreSQL-only project; MySQL compressed-protocol handling is not exercised, but the advisory remains explicitly visible.",
+      "remediation": "Track compatible Prisma releases, upgrade Prisma and its client together after validation, and remove the exception once mysql2 is no longer affected."
+    }
+  ]
+}

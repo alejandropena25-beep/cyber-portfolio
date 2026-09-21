@@ -2,26 +2,33 @@
 
 Phase 6 packages the Phase 5 Angular, NestJS, Prisma and PostgreSQL system as a production-like local Docker stack. Public API response models and server-side authentication boundaries remain unchanged.
 
-Phase 7 adds GitHub Actions validation and main-only delivery of verified images to GHCR. Its implementation is local until an actual GitHub run validates runner behavior and registry permissions. It does not deploy the stack.
+Phase 7 adds GitHub Actions validation and main-only delivery of verified images to GHCR. Phase 8 surrounds that path with source, dependency and exact-image security controls. Neither phase deploys the stack.
 
 ## CI and delivery
 
 ```text
 PR to main / push main / manual
   → Repository checks
+      ├→ Gitleaks
+      ├→ npm policy / Dependency Review (PR only) / CodeQL analysis
       ├→ Backend CI (Node 24 + disposable PostgreSQL 18 :55432)
       └→ Frontend CI (Node 24; no API/database)
           → Docker smoke (real Compose, fresh uniquely named volume)
-              → verified image archive from this run
-                  → Publish verified images (push main only)
-                      → GHCR: backend, backend-tools, frontend
+              → record immutable IDs
+                  → one Trivy scan per ID + identity-bound CycloneDX SBOMs
+                      → export verified images
+                          → load and re-check IDs
+                              → Publish verified images (push main only)
+                          → GHCR: backend, backend-tools, frontend
 ```
 
 Jobs run on Ubuntu 24.04 with read-only contents permission. Only the delivery job adds `packages: write`; it downloads the current run's verified image archive and never builds or executes application code. Backend tests validate the database target before running Prisma or opening the app: loopback, explicit port 55432, exactly `cyber_portfolio_test`, constrained URL parameters and separate development/test databases.
 
 The smoke helper uses the existing Compose file plus a generated override changing only image names. Its random project name, fresh volume, loopback application ports 13000/14200 and random temporary database credentials isolate it from host development. It validates resolved volume/network scope, waits for healthchecks and successful one-shot services, checks migrations/seed/API/SSR/UTF-8, and cleans up in `finally` with an additional `always()` workflow cleanup. Configuration and database contents are never exported as artifacts.
 
-Three compiled Linux images are transferred with Docker save/load, avoiding a second build between verification and publication. The backend tools image is needed to migrate/seed a future deployment. Tags contain full commit SHA, workflow run ID and attempt; `main` is a mutable convenience alias. Future deployment should select an immutable registry digest. More detail, limitations and branch protection recommendations are in [Phase 7](PHASE-7-CICD-PLAN.md).
+Three compiled Linux images are transferred with Docker save/load, avoiding a second build between verification and publication. The manifest binds each temporary reference to an immutable Docker image ID, and the publication job rejects any loaded-ID mismatch before retagging. The backend tools image is needed to migrate/seed a future deployment. Tags contain full commit SHA, workflow run ID and attempt; `main` is a mutable convenience alias. Future deployment should select an immutable registry digest. More detail, limitations and branch protection recommendations are in [Phase 7](PHASE-7-CICD-PLAN.md).
+
+The smoke helper records the three verified local references and IDs after all HTTP/database assertions. Trivy scans each ID once and rejects every critical not covered by an exact expiring exception plus every high outside the exact fingerprint baseline. Syft scans the same IDs; each non-empty CycloneDX document embeds the component, source reference and Docker ID. Export occurs only after those checks. Source-security jobs run in parallel with application CI, and publication depends on their successful execution. CodeQL uploads findings, but severity-based merge blocking additionally requires a remotely configured GitHub Code Scanning ruleset and protected `main`. The separate weekly workflow applies the same container policy to existing GHCR `main` images without rebuilding, publishing or deploying.
 
 ## Container topology
 
@@ -87,4 +94,4 @@ PostgreSQL uses `pg_isready`; backend health calls `/api/health`; frontend healt
 
 ## Phase boundary
 
-Phase 7 adds CI and registry delivery to the completed Phase 6 stack. Staging/production deployment, Kubernetes, reverse proxy, WAF, SIEM, observability and Phase 8 security tooling remain outside this implementation.
+Phase 8 adds DevSecOps validation to the completed container and CI/CD stack. Staging/production deployment, Kubernetes, reverse proxy, WAF, SIEM, observability and automated response remain outside this implementation.
