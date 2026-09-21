@@ -5,7 +5,7 @@ import { RouterLink } from '@angular/router';
   imports: [RouterLink],
   template: `<footer class="site-footer">
     <div class="container footer-content">
-      <p>© Alejandro Peña · Desarrollo web y ciberseguridad</p>
+      <p>© Alejandro Peña · Ciberseguridad y desarrollo web</p>
       <a routerLink="/contact">Contacto ↗</a>
     </div>
   </footer>`,

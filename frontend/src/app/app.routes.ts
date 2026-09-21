@@ -45,10 +45,10 @@ export const routes: Routes = [
   {
     path: '',
     pathMatch: 'full',
-    title: 'Alejandro Peña | Desarrollo web y ciberseguridad',
+    title: 'Alejandro Peña | Ciberseguridad y desarrollo web',
     data: {
       description:
-        'Portfolio profesional de Alejandro Peña: desarrollo web, laboratorios de ciberseguridad y evolución hacia DevOps y DevSecOps.',
+        'Portfolio de Alejandro Peña: ciberseguridad, desarrollo web y un caso de estudio full stack con CI/CD y DevSecOps.',
     },
     loadComponent: () => import('./pages/home').then((module) => module.Home),
   },

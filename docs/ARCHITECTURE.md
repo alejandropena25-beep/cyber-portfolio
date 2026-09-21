@@ -62,7 +62,7 @@ The seed accepts the Docker database only when `DATABASE_OPERATION_MODE=docker`.
 
 ## Angular rendering and API configuration
 
-Named public pages use `RenderMode.Server`: home, projects, project detail, about and contact. They render current database state on each request and preserve SEO without requiring NestJS/PostgreSQL during the frontend image build. `/admin/**` uses `RenderMode.Client`, so private content is never rendered or embedded by the SSR server. The wildcard 404 keeps `RenderMode.Prerender`. It has no finite paths to emit, so the intentional build result is zero prerendered routes, while unknown URLs retain HTTP 404.
+Named public pages use `RenderMode.Server`: home, projects, project detail, about and contact. They render current database state on each request and preserve SEO without requiring NestJS/PostgreSQL during the frontend image build. `/admin/**` uses `RenderMode.Client`, so private content is never rendered or embedded by the SSR server. The wildcard uses server rendering with HTTP 404 so unknown URLs show the application's error page. A missing project slug also sets HTTP 404 after the API responds. No static routes are prerendered.
 
 Browser configuration is loaded from `/runtime-config.js`. In Docker, the SSR Express server generates this response from `BROWSER_API_BASE_URL`; in native Angular development the public default keeps `/api`. The server-side injector independently reads `SERVER_API_BASE_URL`. A focused API XSRF interceptor mirrors `XSRF-TOKEN` for unsafe calls to the configured absolute API origin, preserving Phase 5 CSRF behavior when the Docker browser uses separate ports.
 

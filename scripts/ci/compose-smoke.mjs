@@ -177,6 +177,12 @@ async function checkEndpoints() {
       get(`${api}/projects/${project.slug}`, "application/json"),
     ),
   );
+  const portfolio = details.find(
+    (project) => project.slug === "secure-portfolio-infrastructure",
+  );
+  assert.ok(portfolio?.roadmap?.implemented.some((item) => item.includes("DevSecOps")));
+  assert.ok(portfolio?.roadmap?.inProgress.some((item) => item.includes("Kubernetes")));
+  assert.ok(!portfolio?.roadmap?.implemented.some((item) => item.includes("Kubernetes")));
   const text = JSON.stringify({ profile, projects, details });
   assert.ok(
     !/[\uFFFD\u00C3\u00C2]|[\p{L}]\?[\p{L}]/u.test(text),
@@ -189,6 +195,7 @@ async function checkEndpoints() {
     ["/about", "Tecnologías Informáticas"],
     ["/projects", "Despliegue académico"],
     ["/projects/bunkerweb-waf", "Protección de WordPress con BunkerWeb WAF"],
+    ["/projects/secure-portfolio-infrastructure", "Dos hallazgos HIGH, dos cierres"],
   ]) {
     const html = await get(`${frontend}${path}`, "text/html");
     const visible = mainContent(html);
@@ -198,8 +205,16 @@ async function checkEndpoints() {
       `Corrupted SSR: ${path}`,
     );
   }
+  for (const path of ["/missing-page", "/projects/missing-project"]) {
+    const response = await fetch(`${frontend}${path}`, {
+      signal: AbortSignal.timeout(15000),
+    });
+    assert.equal(response.status, 404, `Missing page did not return HTTP 404: ${path}`);
+    assert.ok(response.headers.get("content-type")?.includes("text/html"));
+    assertMainText(mainContent(await response.text()), "Página no encontrada.", path);
+  }
   console.log(
-    "HTTP smoke passed: health, profile, four project details, four SSR pages and UTF-8.",
+    "HTTP smoke passed: health, profile, four project details, five SSR pages, two rendered 404s and UTF-8.",
   );
 }
 

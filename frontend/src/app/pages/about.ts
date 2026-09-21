@@ -106,16 +106,15 @@ import { PortfolioApiService } from '../data/portfolio-api.service';
 
       <section class="card section callout" aria-labelledby="direction-title">
         <p class="eyebrow">Orientación profesional</p>
-        <h2 id="direction-title">Seguridad como siguiente paso</h2>
+        <h2 id="direction-title">Seguridad en el trabajo técnico</h2>
         <ul class="chip-list" aria-label="Áreas de orientación profesional">
           @for (area of profile.orientation; track area) {
             <li>{{ area }}</li>
           }
         </ul>
         <p>
-          Este portfolio forma parte de ese recorrido: además de presentar proyectos, evolucionará
-          progresivamente hacia una plataforma Full Stack con contenerización, automatización,
-          protección, monitorización y detección.
+          Este portfolio ya une una aplicación Angular y NestJS, persistencia en PostgreSQL y entrega
+          con controles DevSecOps. Kubernetes y la infraestructura de producción siguen en el roadmap.
         </p>
         <a routerLink="/projects">Explorar los proyectos <span aria-hidden="true">→</span></a>
       </section>

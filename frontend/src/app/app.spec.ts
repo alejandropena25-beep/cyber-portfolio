@@ -45,6 +45,7 @@ const projects: readonly Project[] = [
     summary: 'Análisis académico de una aplicación Android.',
     objective: 'Trabajar categorías de OWASP MSTG.',
     technologies: ['MobSF', 'OWASP MSTG'],
+    workPerformed: ['Se realizó el análisis del laboratorio.'],
     confirmedResults: ['MobSF mostró 4 de 10 activities como exportadas.'],
   },
   {
@@ -54,14 +55,14 @@ const projects: readonly Project[] = [
     category: 'DevOps',
     type: 'Proyecto personal',
     status: 'En curso',
-    summary: 'Evolución técnica del portfolio.',
+    summary: 'Aplicación Angular SSR y NestJS con PostgreSQL y entrega verificada.',
     objective: 'Construir una demostración técnica progresiva.',
-    technologies: ['Angular 22', 'TypeScript'],
+    technologies: ['Angular SSR', 'NestJS', 'PostgreSQL 18', 'Prisma 7'],
     repository: 'https://github.com/alejandropena25-beep/cyber-portfolio',
     roadmap: {
-      implemented: ['Angular 22'],
-      inProgress: ['Phase 3 — NestJS Backend'],
-      planned: ['PostgreSQL'],
+      implemented: ['Angular SSR', 'PostgreSQL 18', 'DevSecOps'],
+      inProgress: ['Kubernetes (aún sin implementar)'],
+      planned: ['WAF / protección perimetral'],
     },
   },
 ];
@@ -143,6 +144,8 @@ describe('Portfolio navigation', () => {
     expect(element.textContent).toContain('Alejandro Peña');
     expect(element.querySelectorAll('.project-card')).toHaveLength(projects.length);
     expect(element.querySelector('footer')?.textContent).toContain('Alejandro Peña');
+    expect(element.querySelector('.flagship')?.textContent).toContain('Este portfolio también es un proyecto');
+    expect(element.querySelector('.flagship a')?.getAttribute('href')).toBe('/projects/secure-portfolio-infrastructure');
   });
 
   it.each([
@@ -186,18 +189,54 @@ describe('Portfolio navigation', () => {
     expect(element.textContent).toContain('observaciones del informe automático de MobSF');
   });
 
+  it.each(projects.map((project) => [project.slug]))(
+    'keeps main sections in one column and numbers visible sections consecutively for %s',
+    async (slug) => {
+      const fixture = await render(`/projects/${slug}`);
+      const element = fixture.nativeElement as HTMLElement;
+      const layout = element.querySelector('.detail-layout');
+      const content = element.querySelector('.detail-content');
+      const sidebar = element.querySelector('.project-sidebar');
+      const sections = Array.from(content!.querySelectorAll(':scope > .detail-section'));
+      const numbers = sections.map((section) => section.querySelector('.section-number')?.textContent?.trim());
+
+      expect(layout?.firstElementChild).toBe(content);
+      expect(layout?.lastElementChild).toBe(sidebar);
+      expect(numbers).toEqual(sections.map((_, index) => String(index + 1).padStart(2, '0')));
+      expect(sections[0]?.querySelector('h2')?.textContent).toBe('Objetivo');
+    },
+  );
+
   it('separates implemented, in-progress and planned portfolio work', async () => {
     const fixture = await render('/projects/secure-portfolio-infrastructure');
     const element = fixture.nativeElement as HTMLElement;
 
     expect(element.querySelector('.roadmap-column.implemented')?.textContent).toContain(
-      'Angular 22',
+      'Angular SSR',
     );
     expect(element.querySelector('.roadmap-column.progress')?.textContent).toContain(
-      'NestJS Backend',
+      'Kubernetes',
     );
-    expect(element.querySelector('.roadmap-column.planned')?.textContent).toContain('PostgreSQL');
+    expect(element.querySelector('.roadmap-column.planned')?.textContent).toContain('WAF');
+    expect(element.querySelector('app-portfolio-case-study')).toBeTruthy();
+    expect(element.querySelector('.system-flow')?.textContent).toContain('PostgreSQL 18');
+    expect(element.querySelector('.delivery-flow')?.textContent).toContain('Pull request');
+    expect(element.querySelector('.delivery-flow')?.textContent).toContain('GHCR');
+    expect(element.querySelector('.evidence-grid')?.textContent).toContain('47 / 47');
+    expect(element.querySelectorAll('.decision-list details')).toHaveLength(4);
     expect(element.querySelector('a[href*="github.com"]')).toBeTruthy();
+  });
+
+  it('labels case-study evidence as a validated milestone and keeps future work separate', async () => {
+    const fixture = await render('/projects/secure-portfolio-infrastructure');
+    const element = fixture.nativeElement as HTMLElement;
+
+    expect(element.querySelector('#evidence-title')?.textContent).toBe('Pruebas y análisis');
+    expect(element.querySelector('app-portfolio-case-study')?.textContent).toContain('no telemetría en directo');
+    expect(element.querySelector('#remediation-title')?.textContent).toContain('Dos hallazgos HIGH');
+    expect(element.querySelector('.roadmap-column.implemented')?.textContent).not.toContain('Kubernetes');
+    expect(element.querySelector('.roadmap-column.progress')?.textContent).toContain('aún sin implementar');
+    expect(element.querySelector('.decision-list summary')?.tagName).toBe('SUMMARY');
   });
 
   it('filters projects and supports an empty category', async () => {
