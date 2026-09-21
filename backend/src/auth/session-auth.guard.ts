@@ -15,7 +15,7 @@ export class SessionAuthGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const auth = await this.authService.authenticate(
-      cookies(request)[authConfig().sessionCookie],
+      cookies(request).get(authConfig().sessionCookie),
     );
     if (!auth) throw new UnauthorizedException("Authentication required");
     request.admin = auth.identity;

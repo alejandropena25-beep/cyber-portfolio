@@ -14,6 +14,7 @@ npm run db:status
 npm run db:seed
 npm run admin:create
 npm run build
+npm run test:unit
 npm test
 npm run start:dev
 ```
@@ -24,7 +25,7 @@ Tests require `TEST_DATABASE_URL`, apply migrations and seed their dedicated tes
 
 ## Isolated tests and CI
 
-The `Backend CI` job uses Node 24, the backend lockfile npm cache, `npm ci`, `npm run build` (including Prisma generation), and `npm test`. A disposable `postgres:18-bookworm` service is bound to `127.0.0.1:55432`, with `pg_isready` readiness. The existing runner generates Prisma, runs `migrate deploy`, and executes all 17 PostgreSQL e2e tests. It never uses `migrate dev` or `migrate reset`. The separate repository job runs 18 guard tests without a database.
+The `Backend CI` job uses Node 24, the backend lockfile npm cache, `npm ci`, `npm run build` (including Prisma generation), `npm run test:unit` and `npm test`. A disposable `postgres:18-bookworm` service is bound to `127.0.0.1:55432`, with `pg_isready` readiness. The existing runner generates Prisma, runs `migrate deploy`, and executes all 17 PostgreSQL e2e tests. It never uses `migrate dev` or `migrate reset`. The separate repository job runs 18 guard tests without a database.
 
 Local equivalent, from this directory (temporary test-only credentials below; never reuse them elsewhere):
 
@@ -102,6 +103,6 @@ The root Phase 8 policy runs the complete backend and frontend audits, prints th
 node scripts/ci/security-audit.mjs
 ```
 
-The current backend baseline identifies three underlying Prisma-tooling advisories in `deepmerge-ts@7.1.5` and `mysql2@3.15.3`; their propagation produces npm's four high vulnerable-package count. They remain visible and expire for review on 2026-10-20. The project uses PostgreSQL, but unused MySQL paths are risk context rather than grounds for hiding packages.
+The current backend baseline identifies three underlying Prisma-tooling advisories in `deepmerge-ts@7.1.5` and `mysql2@3.15.3`; their propagation produces npm's four high vulnerable-package count. They remain visible and expire for review on 2026-10-20. The project uses PostgreSQL, but unused MySQL paths are risk context rather than grounds for hiding packages. Prisma 7.10.0 pins mysql2 exactly; the HIGH is fixed in mysql2 3.22.0 and its MODERATE in 3.23.1. No supported Prisma 7 update removes that pin at this review, and an npm override is not accepted without upstream compatibility evidence and full validation.
 
 Do not use `npm audit fix --force`, downgrade Prisma or add speculative overrides. Prisma CLI/peer-graph advisories must be resolved through a compatible Prisma/client update that passes generation, build, PostgreSQL e2e and image validation.

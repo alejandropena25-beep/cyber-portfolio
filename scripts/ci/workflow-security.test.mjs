@@ -9,7 +9,7 @@ const workflowPaths = readdirSync(workflowDirectory)
   .sort()
   .map((name) => join(workflowDirectory, name));
 const workflows = new Map(
-  workflowPaths.map((path) => [path, readFileSync(path, "utf8")]),
+  workflowPaths.map((path) => [path, readFileSync(path, "utf8").replaceAll("\r\n", "\n")]),
 );
 const ci = workflows.get(join(workflowDirectory, "ci.yml"));
 const scheduled = workflows.get(

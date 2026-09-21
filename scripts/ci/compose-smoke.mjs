@@ -11,6 +11,7 @@ import {
 import { dirname, join, resolve } from "node:path";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
+import { assertMainText, mainContent } from "./ssr-content.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const stateDir = join(root, ".ci-smoke");
@@ -190,11 +191,8 @@ async function checkEndpoints() {
     ["/projects/bunkerweb-waf", "Protección de WordPress con BunkerWeb WAF"],
   ]) {
     const html = await get(`${frontend}${path}`, "text/html");
-    const visible = html
-      .replace(/<script[\s\S]*?<\/script>/gi, " ")
-      .replace(/<style[\s\S]*?<\/style>/gi, " ")
-      .replace(/<[^>]+>/g, " ");
-    assert.ok(visible.includes(expected), `SSR content missing: ${path}`);
+    const visible = mainContent(html);
+    assertMainText(visible, expected, path);
     assert.ok(
       !/[\uFFFD\u00C3\u00C2]|[\p{L}]\?[\p{L}]/u.test(visible),
       `Corrupted SSR: ${path}`,

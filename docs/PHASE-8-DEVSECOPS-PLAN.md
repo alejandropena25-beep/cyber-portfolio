@@ -38,6 +38,8 @@ CodeQL analyzes `javascript-typescript`, covering Angular and NestJS, with `secu
 
 `scripts/ci/security-audit.mjs` runs `npm audit --json` independently for backend and frontend, prints each complete npm JSON report, then evaluates the underlying GHSA records. Critical findings and unapproved high findings fail. Medium/low findings remain visible. Policy/schema failures and expired exceptions also fail.
 
+Only recognized transient transport/registry errors retry, for at most three attempts with 250/500 ms backoff. A valid audit report is evaluated on its first successful retrieval even when npm exits nonzero for vulnerabilities. Unknown errors, malformed reports and exhausted retries fail closed.
+
 The machine-readable baseline is `scripts/ci/npm-audit-baseline.json`. Each entry binds project + advisory + package + exact installed version + lockfile node path, with owner, dates, rationale and remediation. The initial entries expire on **2026-10-20**:
 
 | Advisory              | Package/version      | Severity | Context                                        |
@@ -48,7 +50,9 @@ The machine-readable baseline is `scripts/ci/npm-audit-baseline.json`. Each entr
 
 The three underlying advisories produce npm's four vulnerable-package count through `@prisma/config` and `prisma`. npm's proposed Prisma 6 downgrade is rejected. Remediation is a compatible, tested Prisma/client upgrade; no forced fix or speculative override is allowed.
 
-Focused Node tests prove accepted, unapproved-high, critical, expired and malformed cases. They use synthetic advisory data and never commit a test secret.
+[Prisma 7.10.0's CLI package](https://github.com/prisma/orm/blob/7.10.0/packages/cli/package.json) declares `mysql2: "3.15.3"` exactly, so normal npm resolution cannot select a patched 3.x release. The [HIGH advisory](https://github.com/advisories/GHSA-3f6p-5ww8-9rcr) is fixed in mysql2 3.22.0 and the [MODERATE advisory](https://github.com/advisories/GHSA-rgwj-5xj2-c3m3) in 3.23.1. At this review, 7.10.0 is the latest stable Prisma 7 release shown by [Prisma's releases](https://github.com/prisma/orm/releases); no supported 7.x update removes the pin. [npm `overrides`](https://docs.npmjs.com/cli/v11/configuring-npm/package-json/#overrides) could force a newer mysql2 package but would substitute a version outside Prisma's declared dependency. No upstream compatibility assurance was found, so an override was not applied. The project uses PostgreSQL, the finding stays visible and the exact exception expires on 2026-10-20. A supported compatible Prisma release and full backend/Docker validation are the remediation trigger.
+
+Focused Node tests prove accepted, unapproved-high, critical, expired and malformed cases plus transient retry, retry exhaustion and immediate high-finding evaluation. They use synthetic advisory data and never commit a test secret.
 
 ### Containers and SBOMs
 
@@ -81,8 +85,9 @@ From the repository root with Node 24:
 
 ```powershell
 node --check scripts/ci/security-audit.mjs
+node --check scripts/ci/compose-smoke.mjs
 node --check scripts/ci/container-security.mjs
-node --test scripts/ci/security-audit.test.mjs scripts/ci/container-security.test.mjs scripts/ci/workflow-security.test.mjs
+node --test scripts/ci/security-audit.test.mjs scripts/ci/ssr-content.test.mjs scripts/ci/container-security.test.mjs scripts/ci/workflow-security.test.mjs
 node scripts/ci/security-audit.mjs
 ```
 
@@ -107,10 +112,10 @@ Every exception must be exact and expiring. The repository owner owns the curren
 
 | Validation                           | Result                                                                          |
 | ------------------------------------ | ------------------------------------------------------------------------------- |
-| Phase 8 policy/helper/workflow tests | 38/38 passed, including exact negative policy and identity paths                |
+| Phase 8 policy/helper/workflow tests | 47/47 passed, including retry and SSR regression paths                        |
 | Live npm policy                      | Passed; three accepted Prisma-related advisories visible, frontend clean        |
 | Gitleaks                             | Full history and intended worktree directory scans clean; zero findings          |
-| Backend                              | Prisma generation/NestJS build passed; PostgreSQL e2e 17/17 passed              |
+| Backend                              | Prisma generation/NestJS build passed; auth unit 4/4; PostgreSQL e2e 17/17 passed |
 | Database guard                       | 18/18 passed without database access                                            |
 | Frontend                             | 18/18 tests passed; production SSR build passed                                 |
 | Compose smoke                        | Passed migrations, seed, health, API, SSR and UTF-8; isolated resources removed |

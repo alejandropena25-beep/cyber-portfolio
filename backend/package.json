@@ -8,6 +8,7 @@
     "start": "nest start",
     "start:dev": "nest start --watch",
     "test": "npm run test:e2e",
+    "test:unit": "jest --runInBand",
     "test:e2e": "node test/run-e2e.cjs",
     "prisma:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
