@@ -329,21 +329,30 @@ SELECT pg_encoding_to_char(encoding) FROM pg_database WHERE datname = current_da
     );
     assert.deepEqual(rows.split(/\r?\n/), ["2", "0", "UTF8", "UTF8", "UTF8"]);
     await checkEndpoints();
-    if (process.env.CI_EXPORT_IMAGES === "true") {
-      const output = join(root, ".ci-images");
-      mkdirSync(output, { recursive: true });
-      await docker([
-        "image",
-        "save",
-        "--output",
-        join(output, "verified-images.tar"),
-        ...Object.values(images),
-      ]);
-      writeFileSync(join(output, "images.json"), JSON.stringify(images));
-      console.log(
-        "Exported the three smoke-tested images for delivery; no runtime configuration exported.",
+    const output = join(root, ".ci-images");
+    mkdirSync(output, { recursive: true });
+    const verifiedImages = {};
+    for (const [component, reference] of Object.entries(images)) {
+      const inspected = JSON.parse(
+        await docker(
+          ["image", "inspect", "--format", "{{json .}}", reference],
+          { capture: true },
+        ),
       );
+      assert.match(inspected.Id, /^sha256:[a-f0-9]{64}$/);
+      assert.equal(inspected.Os, "linux");
+      verifiedImages[component] = {
+        reference,
+        id: inspected.Id,
+        os: inspected.Os,
+        architecture: inspected.Architecture,
+      };
     }
+    writeFileSync(
+      join(output, "images.json"),
+      `${JSON.stringify({ schemaVersion: 1, images: verifiedImages }, null, 2)}\n`,
+    );
+    console.log("Recorded immutable IDs for the three smoke-tested images.");
   } catch (error) {
     console.error(redact(error.message));
     for (const args of [

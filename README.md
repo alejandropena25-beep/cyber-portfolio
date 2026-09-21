@@ -8,18 +8,22 @@ La plataforma utiliza Angular SSR para la experiencia pública, una API NestJS p
 
 ## Estado actual
 
-El proyecto se encuentra en **Phase 7 — CI/CD**, implementada localmente y pendiente de validación real en GitHub. Las fases 1 a 6 están completadas, incluida la contenerización con Docker Compose.
+El proyecto se encuentra en **Phase 8 — DevSecOps**, implementada localmente y pendiente de validación de los nuevos controles en GitHub. Las fases 1 a 7 están completadas como base, incluida la entrega de imágenes verificadas mediante CI/CD.
 
 El workflow `CI` valida PR hacia `main`, pushes a `main` y ejecuciones manuales. Solo un push a `main` que supere todos los checks publica las imágenes verificadas en GHCR. Esto es entrega continua de artefactos; todavía no hay despliegue. El badge mostrará el estado remoto cuando el workflow esté en GitHub; no acredita las validaciones locales.
 
 ## CI y entrega de imágenes
 
 ```text
-Repository checks → Backend CI ─┐
-                  → Frontend CI ┴→ Docker smoke → Publish verified images (push main)
+Repository checks
+  ├→ Secret scan / npm policy / CodeQL analysis
+  ├→ Backend CI ──┐
+  └→ Frontend CI ─┴→ Docker smoke → immutable IDs → Trivy + bound SBOM → ID check → Publish (push main)
 ```
 
 Node 24 y `npm ci` validan los lockfiles. Backend usa PostgreSQL 18 desechable en `127.0.0.1:55432/cyber_portfolio_test`; el guard rechaza el puerto 5432. Frontend construye SSR sin API ni base activa. El smoke construye los Dockerfiles reales y comprueba migraciones, seed, healthchecks, API, SSR y UTF-8 antes de limpiar sus recursos aislados.
+
+Phase 8 añade Gitleaks, CodeQL, Dependency Review, políticas auditables para `npm audit` y vulnerabilidades de contenedor, Trivy sobre IDs inmutables, SBOM CycloneDX enlazados al mismo ID y Dependabot. Los hallazgos conocidos siguen visibles mediante excepciones o huellas exactas con caducidad; cualquier critical no aceptado o nuevo high de contenedor bloquea. CodeQL publica resultados, pero el bloqueo por severidad depende además de un ruleset remoto todavía por verificar. No se usa `npm audit fix --force` ni se rebaja Prisma. El workflow semanal reutiliza las mismas políticas sin construir, publicar ni desplegar.
 
 Se entregan `ghcr.io/<owner>/<repo>-backend`, `-backend-tools` y `-frontend`, con `sha-<commit-completo>-<run-id>-<intento>` y el alias `main` cuando corresponde. Se transfieren las imágenes comprobadas entre jobs, sin reconstruirlas para publicar. No hay secretos personalizados: GHCR utiliza el `GITHUB_TOKEN` temporal con `packages: write` solo en el job de publicación.
 
@@ -27,6 +31,8 @@ Para reproducir el smoke con Docker activo y Node 24, desde la raíz:
 
 ```powershell
 node --test backend/test/database-safety.test.cjs
+node --test scripts/ci/security-audit.test.mjs scripts/ci/container-security.test.mjs scripts/ci/workflow-security.test.mjs
+node scripts/ci/security-audit.mjs
 node scripts/ci/compose-smoke.mjs
 ```
 
@@ -130,6 +136,8 @@ El build frontend ya no necesita que NestJS o PostgreSQL estén activos: los dat
 - [Plan de Phase 5](docs/PHASE-5-AUTH-PLAN.md)
 - [Plan de Phase 6](docs/PHASE-6-DOCKER-PLAN.md)
 - [Plan de Phase 7 y primera validación remota](docs/PHASE-7-CICD-PLAN.md)
+- [Plan de Phase 8 y política DevSecOps](docs/PHASE-8-DEVSECOPS-PLAN.md)
+- [Política de seguridad](SECURITY.md)
 
 ## Roadmap resumido
 
@@ -139,8 +147,8 @@ El build frontend ya no necesita que NestJS o PostgreSQL estén activos: los dat
 4. PostgreSQL + Prisma — completado.
 5. Administración y autenticación — completado.
 6. Docker / Docker Compose — completado.
-7. CI/CD con GitHub Actions — fase actual; pendiente de validación remota.
-8. DevSecOps.
+7. CI/CD con GitHub Actions — completado.
+8. DevSecOps — fase actual; nuevos controles pendientes de validación remota.
 9. Kubernetes.
 10. WAF e infraestructura de seguridad.
 11. SIEM con Wazuh.

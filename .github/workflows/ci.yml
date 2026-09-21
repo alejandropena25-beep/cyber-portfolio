@@ -24,10 +24,10 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "24"
           package-manager-cache: false
@@ -36,9 +36,96 @@ jobs:
           git show --format= --check HEAD
           git diff --check
           node --check scripts/ci/compose-smoke.mjs
+          node --check scripts/ci/container-security.mjs
+          node --check scripts/ci/security-audit.mjs
+          node --check scripts/ci/workflow-security.test.mjs
           node --check backend/test/run-e2e.cjs
       - name: Prove unsafe database targets cannot launch tests
         run: node --test backend/test/database-safety.test.cjs
+
+  secret-scan:
+    name: Secret scan
+    needs: quality
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Scan the relevant Git history without publishing raw findings
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_VERSION: "8.24.3"
+          GITLEAKS_ENABLE_COMMENTS: "false"
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
+          GITLEAKS_ENABLE_SUMMARY: "false"
+      - name: Scan the complete checked-out history with explicit redaction
+        run: gitleaks git --redact --no-banner --no-color .
+
+  dependency-security:
+    name: Dependency security
+    needs: quality
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          package-manager-cache: false
+      - name: Test security policy failure and success paths
+        run: >-
+          node --test
+          scripts/ci/security-audit.test.mjs
+          scripts/ci/container-security.test.mjs
+          scripts/ci/workflow-security.test.mjs
+      - name: Audit both npm lockfiles against the expiring policy
+        run: node scripts/ci/security-audit.mjs
+
+  dependency-review:
+    name: Dependency review
+    needs: quality
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Reject newly introduced high or critical vulnerable dependencies
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
+          vulnerability-check: true
+          license-check: false
+          comment-summary-in-pr: never
+
+  codeql:
+    name: CodeQL
+    needs: quality
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Initialize JavaScript and TypeScript analysis
+        uses: github/codeql-action/init@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4
+        with:
+          languages: javascript-typescript
+          queries: security-extended
+      - name: Analyze Angular and NestJS sources
+        uses: github/codeql-action/analyze@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4
 
   backend-ci:
     name: Backend CI
@@ -65,10 +152,10 @@ jobs:
     env:
       TEST_DATABASE_URL: postgresql://portfolio_test:disposable_ci_only@127.0.0.1:55432/cyber_portfolio_test
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "24"
           cache: npm
@@ -89,10 +176,10 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "24"
           cache: npm
@@ -106,16 +193,16 @@ jobs:
 
   docker-smoke:
     name: Docker smoke
-    needs: [backend-ci, frontend-ci]
+    needs: [secret-scan, dependency-security, codeql, backend-ci, frontend-ci]
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 40
     env:
       CI_EXPORT_IMAGES: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "24"
           package-manager-cache: false
@@ -124,9 +211,35 @@ jobs:
       - name: Always clean this run's Compose resources and temporary environment
         if: always()
         run: node scripts/ci/compose-smoke.mjs cleanup
+      - name: Install pinned Trivy
+        uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567 # v0.3.1
+        with:
+          version: v0.74.0
+          cache: true
+      - name: Install pinned Syft
+        id: syft
+        uses: anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
+        with:
+          syft-version: v1.52.0
+      - name: Scan exact verified images and generate required CycloneDX SBOMs
+        env:
+          SYFT_COMMAND: ${{ steps.syft.outputs.cmd }}
+        run: node scripts/ci/container-security.mjs
+      - name: Retain verified-image SBOMs and sanitized Trivy evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: verified-image-security-evidence-${{ github.sha }}
+          path: |
+            .ci-images/images.json
+            .ci-images/sboms/*.cdx.json
+            .ci-images/trivy/*.json
+          include-hidden-files: true
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 14
       - name: Transfer only verified images to the main delivery job
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: verified-images
           path: |
@@ -139,7 +252,16 @@ jobs:
 
   publish-images:
     name: Publish verified images
-    needs: [quality, backend-ci, frontend-ci, docker-smoke]
+    needs:
+      [
+        quality,
+        secret-scan,
+        dependency-security,
+        codeql,
+        backend-ci,
+        frontend-ci,
+        docker-smoke,
+      ]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -147,8 +269,15 @@ jobs:
       contents: read
       packages: write
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          package-manager-cache: false
       - name: Download images verified by this workflow run
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: verified-images
           path: verified-images
@@ -162,11 +291,12 @@ jobs:
           trap 'rm -rf -- "$DOCKER_CONFIG"' EXIT
           printf '%s' "$GH_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
           docker load --input verified-images/verified-images.tar
+          node scripts/ci/container-security.mjs verify-loaded verified-images/images.json
           registry="ghcr.io/${GITHUB_REPOSITORY,,}"
           tag="sha-${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           # Run/attempt suffix makes a rebuilt commit a distinct delivery artifact.
           for component in backend backend-tools frontend; do
-            source=$(jq -er --arg component "$component" '.[$component]' verified-images/images.json)
+            source=$(jq -er --arg component "$component" '.images[$component].reference' verified-images/images.json)
             image="${registry}-${component}"
             docker tag "$source" "$image:$tag"
             docker push "$image:$tag"
