@@ -22,6 +22,8 @@ npm run build
 
 El build de producción ya no necesita una API o base activa. Las rutas públicas con nombre usan `RenderMode.Server` y se resuelven cuando llega una petición. `/admin/**` usa renderizado cliente. El wildcard 404 usa `RenderMode.Prerender`; como sus URL no se pueden enumerar, el recuento esperado sigue siendo cero rutas prerenderizadas, mientras que una URL desconocida conserva HTTP 404 en ejecución.
 
+`npm run build` carga `build.env` con Node 24 y establece `NG_BUILD_CHUNKS_ROLLDOWN=false` para la optimización de chunks, salvo que el proceso ya tenga esa variable definida. Angular 22.1 usa Rolldown por defecto; un build Docker de CI falló al cargar su binding opcional de Linux x64 glibc, `@rolldown/binding-linux-x64-gnu@1.2.0`. El log disponible no muestra la causa interna que distinguiría un paquete ausente de un fallo al cargarlo. La alternativa Rollup conserva la optimización y usa `rollup` como alias de `@rollup/wasm-node@4.63.4`, una dependencia solo de build sin binding nativo obligatorio. El mismo script se ejecuta en Windows, CI y Docker; el Dockerfile copia `build.env` a la etapa de build. El runtime SSR no incluye Rollup.
+
 ## CI validation
 
 The `Frontend CI` job in `../.github/workflows/ci.yml` uses Node 24, npm caching keyed by `frontend/package-lock.json`, `npm ci`, `npm test -- --watch=false` (18 tests), and `npm run build`. It has no PostgreSQL service and starts no backend. Runtime SSR and client-rendered administration remain unchanged.

@@ -4,7 +4,7 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 FROM dependencies AS build
-COPY angular.json tsconfig.json tsconfig.app.json tsconfig.spec.json ./
+COPY angular.json tsconfig.json tsconfig.app.json tsconfig.spec.json build.env ./
 COPY public ./public
 COPY src ./src
 RUN npm run build
