@@ -1,4 +1,4 @@
-FROM node:24-bookworm-slim AS dependencies
+FROM node:25-bookworm-slim AS dependencies
 WORKDIR /app
 RUN apt-get update \
     && apt-get install --no-install-recommends --yes openssl \
@@ -12,7 +12,7 @@ COPY prisma ./prisma
 COPY src ./src
 RUN npm run build
 
-FROM node:24-bookworm-slim AS production-dependencies
+FROM node:25-bookworm-slim AS production-dependencies
 WORKDIR /app
 RUN apt-get update \
     && apt-get install --no-install-recommends --yes libssl3 \
@@ -20,7 +20,7 @@ RUN apt-get update \
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --omit=peer && npm cache clean --force
 
-FROM node:24-bookworm-slim AS runtime
+FROM node:25-bookworm-slim AS runtime
 ENV NODE_ENV=production \
     PORT=3000
 WORKDIR /app
