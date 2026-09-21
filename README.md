@@ -8,9 +8,11 @@ La plataforma utiliza Angular SSR para la experiencia pública, una API NestJS p
 
 ## Estado actual
 
-El proyecto se encuentra en **Phase 8 — DevSecOps**, implementada localmente y pendiente de validación de los nuevos controles en GitHub. Las fases 1 a 7 están completadas como base, incluida la entrega de imágenes verificadas mediante CI/CD.
+El proyecto se encuentra en **Phase 8.5 — preparación de Public Preview v0.1**. Phase 8 — DevSecOps fue validada en GitHub: CI de main, rescaneo programado y publicación de imágenes verificadas en GHCR. Esta preparación no es un despliegue público. Kubernetes sigue siendo el siguiente hito, aún sin implementar.
 
-El workflow `CI` valida PR hacia `main`, pushes a `main` y ejecuciones manuales. Solo un push a `main` que supere todos los checks publica las imágenes verificadas en GHCR. Esto es entrega continua de artefactos; todavía no hay despliegue. El badge mostrará el estado remoto cuando el workflow esté en GitHub; no acredita las validaciones locales.
+El workflow `CI` valida PR hacia `main`, pushes a `main` y ejecuciones manuales. Solo un push a `main` que supere todos los checks publica las imágenes verificadas en GHCR. Esto es entrega continua de artefactos; todavía no hay despliegue. El badge muestra el estado remoto del último run y no acredita las validaciones locales.
+
+La presentación del sistema y las condiciones previas para un primer despliegue están en [Public Preview v0.1](docs/PUBLIC-PREVIEW-V0.1.md). El contenido revisado del proyecto emblemático vive en el seed; las bases existentes requieren una actualización de contenido controlada porque el bootstrap no reescribe registros.
 
 ## CI y entrega de imágenes
 
@@ -88,7 +90,7 @@ Angular SSR ── http://backend:3000/api
 - `migrate` y `seed` son tareas de una ejecución; un fallo impide que arranque la API.
 - Las aplicaciones usan sistema raíz de solo lectura, `/tmp` temporal, capacidades Linux eliminadas y `no-new-privileges`.
 
-Las rutas públicas con nombre usan SSR en tiempo de petición. Así reflejan ediciones administrativas sin reconstruir Angular y el build de la imagen frontend no requiere API ni base activas. Las rutas `/admin/**` siguen siendo client-side. El wildcard 404 conserva `RenderMode.Prerender`; no genera rutas enumerables durante el build y mantiene la respuesta HTTP 404 en ejecución.
+Las rutas públicas con nombre usan SSR en tiempo de petición. Así reflejan ediciones administrativas sin reconstruir Angular y el build de la imagen frontend no requiere API ni base activas. Las rutas `/admin/**` siguen siendo client-side. La ruta comodín usa SSR con estado HTTP 404 para mostrar la página de error; los slugs de proyecto inexistentes también devuelven 404. El build no enumera rutas estáticas.
 
 ## Desarrollo nativo
 
@@ -148,7 +150,8 @@ El build frontend ya no necesita que NestJS o PostgreSQL estén activos: los dat
 5. Administración y autenticación — completado.
 6. Docker / Docker Compose — completado.
 7. CI/CD con GitHub Actions — completado.
-8. DevSecOps — fase actual; nuevos controles pendientes de validación remota.
+8. DevSecOps — completada y validada en GitHub.
+8.5. Public Preview v0.1 — preparación de contenido y revisión de despliegue, sin despliegue en esta fase.
 9. Kubernetes.
 10. WAF e infraestructura de seguridad.
 11. SIEM con Wazuh.

@@ -7,5 +7,5 @@ export const serverRoutes: ServerRoute[] = [
   { path: 'projects/:slug', renderMode: RenderMode.Server },
   { path: 'about', renderMode: RenderMode.Server },
   { path: 'contact', renderMode: RenderMode.Server },
-  { path: '**', renderMode: RenderMode.Prerender },
+  { path: '**', renderMode: RenderMode.Server, status: 404 },
 ];

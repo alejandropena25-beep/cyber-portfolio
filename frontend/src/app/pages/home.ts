@@ -9,7 +9,7 @@ import { PortfolioApiService } from '../data/portfolio-api.service';
   template: `
     @if (profile(); as profile) {
       <section class="hero" aria-labelledby="home-title">
-        <p class="eyebrow">{{ profile.name }} · Desarrollo web y ciberseguridad</p>
+        <p class="eyebrow">{{ profile.name }} · Ciberseguridad y desarrollo web</p>
         <h1 id="home-title">
           Desarrollo software con una mirada orientada a <span class="accent">la seguridad.</span>
         </h1>
@@ -61,6 +61,24 @@ import { PortfolioApiService } from '../data/portfolio-api.service';
             durante el ciclo de vida del software.
           </p>
         </article>
+      </div>
+    </section>
+
+    <section class="section flagship" aria-labelledby="flagship-title">
+      <div class="flagship-copy">
+        <p class="eyebrow">Proyecto propio · DevSecOps completado</p>
+        <h2 id="flagship-title">Este portfolio también es un proyecto.</h2>
+        <p>La interfaz Angular SSR forma parte de una aplicación con API NestJS, PostgreSQL y Prisma. Docker Compose reproduce el sistema; GitHub Actions prueba, analiza y publica imágenes verificadas en GHCR.</p>
+        <a class="button" routerLink="/projects/secure-portfolio-infrastructure">Explorar el caso de estudio <span aria-hidden="true">→</span></a>
+      </div>
+      <div class="flagship-proof" aria-label="Hitos implementados">
+        <p class="proof-title">Implementado y validado en Phase 8</p>
+        <ol>
+          <li><span>01</span><strong>Aplicación</strong><small>Angular SSR · NestJS · PostgreSQL · Prisma</small></li>
+          <li><span>02</span><strong>Entrega</strong><small>Docker Compose · GitHub Actions · GHCR</small></li>
+          <li><span>03</span><strong>Seguridad</strong><small>Gitleaks · Dependency Review · CodeQL · Trivy · CycloneDX</small></li>
+        </ol>
+        <p class="proof-next"><strong>Siguiente hito:</strong> Kubernetes · planificado, aún sin implementar</p>
       </div>
     </section>
 

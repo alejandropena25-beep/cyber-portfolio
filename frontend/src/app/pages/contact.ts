@@ -17,7 +17,6 @@ import { PortfolioApiService } from '../data/portfolio-api.service';
     <section class="card section callout">
       <p class="card-kicker">Canal público confirmado</p>
       <h2>GitHub</h2>
-      <p>LinkedIn y el currículum se incorporarán cuando sus enlaces públicos estén confirmados.</p>
       <div class="actions">
         @if (profile(); as profile) {
           <a class="button" [href]="profile.links.github" target="_blank" rel="noopener noreferrer"

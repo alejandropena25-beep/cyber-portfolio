@@ -18,7 +18,7 @@ decision during a job interview.
 
 ## Current Phase
 
-CURRENT PHASE: Phase 8 — DevSecOps.
+CURRENT PHASE: Phase 8.5 — Public Preview v0.1 preparation.
 
 Phase 1 — Angular Frontend: COMPLETED
 Phase 2 — Portfolio Content: COMPLETED
@@ -27,7 +27,8 @@ Phase 4 — PostgreSQL + Prisma: COMPLETED
 Phase 5 — Authentication / Administration: COMPLETED
 Phase 6 — Docker / Containerization: COMPLETED
 Phase 7 — CI/CD: COMPLETED
-Phase 8 — DevSecOps: CURRENT
+Phase 8 — DevSecOps: COMPLETED
+Phase 8.5 — Public Preview v0.1 preparation: CURRENT
 
 Existing frontend:
 
@@ -48,17 +49,12 @@ Existing frontend:
 - Typed API-backed project and profile data
 - Passing build and tests
 
-Current Phase 8 priorities:
+Phase 8.5 priorities:
 
-1. Add secret scanning and JavaScript/TypeScript SAST.
-2. Enforce an explicit, expiring dependency vulnerability policy.
-3. Review newly introduced dependencies in pull requests.
-4. Scan the exact smoke-tested container images before publication.
-5. Generate SBOMs for backend, backend-tools and frontend images.
-6. Automate reviewable dependency updates without automatic merging.
-7. Preserve the Phase 7 test, smoke and exact-image publication guarantees.
-8. Rescan source, dependencies and published images on a schedule.
-9. Do NOT start Phase 9.
+1. Present the implemented system as a clear, evidence-backed case study.
+2. Prepare a safe first public preview without deploying in this phase.
+3. Preserve Phase 8 security and exact-image publication guarantees.
+4. Do NOT start Phase 9.
 
 Current backend:
 
@@ -82,7 +78,8 @@ Follow this exact order:
 5. Administration / Authentication — completed
 6. Docker / Docker Compose — completed
 7. CI/CD with GitHub Actions — completed
-8. DevSecOps — current
+8. DevSecOps — completed
+8.5. Public Preview v0.1 preparation — current
 9. Kubernetes
 10. WAF / Infrastructure Security
 11. SIEM / Wazuh

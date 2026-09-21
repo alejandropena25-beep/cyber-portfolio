@@ -1,0 +1,78 @@
+<div class="case-study">
+  <section class="case-intro" aria-labelledby="case-story-title">
+    <p class="eyebrow">Caso de estudio · Hito validado de Phase 8</p>
+    <h2 id="case-story-title">Del sitio público al artefacto verificado</h2>
+    <p>La plataforma creció por capas. Cada etapa añadió una responsabilidad comprobable sin presentar el siguiente hito como terminado.</p>
+    <ol class="chapter-list">
+      @for (chapter of chapters; track chapter.title; let index = $index) {
+        <li><span class="chapter-index">0{{ index + 1 }}</span><div><h3>{{ chapter.title }}</h3><p>{{ chapter.detail }}</p></div></li>
+      }
+    </ol>
+  </section>
+
+  <section aria-labelledby="current-architecture-title">
+    <p class="eyebrow">Sistema actual · Docker Compose</p>
+    <h2 id="current-architecture-title">Arquitectura de la aplicación</h2>
+    <p>El navegador recibe HTML de Angular SSR y consulta la API REST. La administración utiliza la misma API; las sesiones se conservan en PostgreSQL.</p>
+    <div class="diagram" role="group" aria-label="Navegador a Angular SSR, API REST NestJS, Prisma y PostgreSQL">
+      <ol class="system-flow">
+        <li><span class="node-kind">Cliente</span><strong>Navegador</strong><small>Rutas públicas y solicitudes API</small></li>
+        <li><span class="node-kind">Contenedor frontend</span><strong>Angular SSR</strong><small>HTML público y navegación</small></li>
+        <li><span class="node-kind">Contenedor backend</span><strong>NestJS · API REST</strong><small>Contenido y administración; sesiones, CSRF y Origin</small></li>
+        <li><span class="node-kind">Acceso a datos</span><strong>Prisma 7</strong><small>Consultas y migraciones</small></li>
+        <li><span class="node-kind">Red de datos aislada</span><strong>PostgreSQL 18</strong><small>Contenido y sesiones · sin puerto publicado al host</small></li>
+      </ol>
+    </div>
+    <p class="diagram-note">Las tareas de migración y seed se ejecutan antes del backend. Los contenedores de aplicación usan usuario sin privilegios, raíz de solo lectura, tmpfs, capacidades eliminadas y no-new-privileges.</p>
+  </section>
+
+  <section aria-labelledby="delivery-title">
+    <p class="eyebrow">GitHub Actions · Flujo real del workflow</p>
+    <h2 id="delivery-title">Entrega con identidad comprobada</h2>
+    <p>Después de los checks del repositorio, Gitleaks, la política npm, CodeQL y las pruebas de ambas aplicaciones corren en paralelo. El smoke espera a esos cinco jobs. Dependency Review corre en pull requests y no es una dependencia del smoke.</p>
+    <div class="diagram delivery-diagram">
+      <ol class="delivery-flow">
+        <li><strong>01 · Source</strong><span>Pull request o push a main</span></li>
+        <li><strong>02 · Repository checks</strong><span>Whitespace, sintaxis y guardas de base de datos</span></li>
+        <li class="parallel"><strong>03 · Validación en paralelo</strong><span>Gitleaks · política npm · CodeQL · backend CI · frontend CI</span><small>Dependency Review se ejecuta solo en pull requests.</small></li>
+        <li><strong>04 · Docker Compose smoke</strong><span>Migración, seed, API, SSR, salud y contenido UTF-8</span></li>
+        <li><strong>05 · Identidad y seguridad</strong><span>IDs inmutables → Trivy sobre esos IDs → tres SBOM CycloneDX ligados a los mismos IDs</span></li>
+        <li class="branch"><strong>Pull request · Validación</strong><span>Termina aquí; no publica imágenes.</span></li>
+        <li class="branch publish"><strong>Main · Publicación</strong><span>Exporta y carga las tres imágenes; verifica sus IDs y las publica en GHCR sin reconstruirlas.</span></li>
+      </ol>
+    </div>
+    <p class="diagram-note">El análisis de CodeQL sube resultados. El bloqueo por severidad exige además una regla de GitHub configurada en el repositorio.</p>
+  </section>
+
+  <section aria-labelledby="evidence-title">
+    <p class="eyebrow">Evidencia · Último hito validado</p>
+    <h2 id="evidence-title">Pruebas y análisis</h2>
+    <p>Estos resultados documentan Phase 8. Son una fotografía de validación, no telemetría en directo.</p>
+    <dl class="evidence-grid">
+      @for (item of evidence; track item.label) {
+        <div><dt>{{ item.label }}</dt><dd>{{ item.value }}</dd></div>
+      }
+    </dl>
+    <p class="evidence-footnote">El workflow de seguridad programado también pasó en el hito validado. Las imágenes y SBOM corresponden a backend, backend-tools y frontend.</p>
+  </section>
+
+  <section aria-labelledby="remediation-title">
+    <p class="eyebrow">CodeQL · Corrección verificada</p>
+    <h2 id="remediation-title">Dos hallazgos HIGH, dos cierres</h2>
+    <ol class="remediation-flow" aria-label="Ciclo de corrección de CodeQL">
+      <li>2 HIGH detectados</li><li>Triaje</li><li>Corrección en código</li><li>Pruebas de regresión</li><li>Reanálisis en GitHub</li><li>2 cerrados</li>
+    </ol>
+    <p>Uno afectaba a un regexp que eliminaba HTML en la herramienta de smoke de CI. Se sustituyó por verificación estructurada del contenido SSR. El otro guardaba nombres de cookies no confiables como propiedades dinámicas; ahora usa <code>Map</code>. Ambos cambios se probaron y CodeQL confirmó el cierre.</p>
+  </section>
+
+  <section aria-labelledby="decisions-title">
+    <p class="eyebrow">Decisiones y límites</p>
+    <h2 id="decisions-title">Por qué se diseñó así</h2>
+    <div class="decision-list">
+      <details><summary>Sesiones controladas por el servidor</summary><p>El estado de sesión permanece en PostgreSQL y puede invalidarse desde el servidor. No hacía falta introducir JWT ni registro público.</p></details>
+      <details><summary>Base de datos sin acceso público</summary><p>PostgreSQL solo recibe tráfico por la red de datos de Compose. La API es el límite de acceso para el cliente.</p></details>
+      <details><summary>Identidad de imagen antes de publicar</summary><p>El manifest conserva cada ID probado. Trivy y Syft analizan esos IDs; el job de GHCR verifica los IDs cargados antes de etiquetar y publicar.</p></details>
+      <details><summary>Asesoría mysql2 aún abierta · revisión 2026-10-20</summary><p>mysql2 llega por herramientas de Prisma 7.10.0, que fija la versión afectada. La aplicación usa PostgreSQL, no MySQL. La asesoría sigue visible bajo una excepción específica y temporal que vence el 20 de octubre de 2026. No se aplicó un downgrade forzado ni un override sin soporte; se revisará una actualización compatible de Prisma.</p></details>
+    </div>
+  </section>
+</div>

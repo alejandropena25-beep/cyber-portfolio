@@ -1,6 +1,6 @@
 # Phase 8 — DevSecOps
 
-Status: **IMPLEMENTED LOCALLY; REMOTE GITHUB VALIDATION REQUIRED**. This document does not claim that hosted security settings, SARIF upload, scheduled jobs or GHCR access have succeeded until the committed workflow runs on GitHub.
+Status: **IMPLEMENTED AND VALIDATED ON GITHUB** as reported for the Phase 8 milestone. Main CI, scheduled security and verified GHCR publication passed. Two HIGH CodeQL findings were remediated in source, regression-tested, reanalysed and closed. Repository settings such as branch rules and GitHub Secret Scanning remain separate checks unless independently confirmed.
 
 ## Scope and architecture
 
@@ -131,6 +131,6 @@ The four exact reviewed criticals and 58 exact high fingerprints remain visible 
 
 ## Hosted limitations and phase boundary
 
-Local validation cannot prove GitHub plan/visibility entitlement, CodeQL SARIF upload, dependency-review API availability, Secret Scanning/Push Protection settings, branch rules, scheduled trigger execution, artifact retention or GHCR package access. Verify these in the first PR/main/scheduled runs. If a hosted feature is unavailable, retain local scanner coverage and document the observed limitation before choosing a fallback; do not silently weaken a gate.
+The Phase 8 milestone was subsequently validated on GitHub: main CI, scheduled security and GHCR publication passed; the two HIGH CodeQL alerts closed after source fixes and re-analysis. Those results do not establish Secret Scanning/Push Protection settings, branch rules, artifact retention policy or future runs. Confirm those separately before a public preview. If a hosted feature becomes unavailable, retain scanner coverage and document the observed limitation before choosing a fallback; do not silently weaken a gate.
 
 Phase 8 is not deployment. Kubernetes, production hosting, reverse proxy/TLS, WAF, SIEM, monitoring and automated response remain later phases.

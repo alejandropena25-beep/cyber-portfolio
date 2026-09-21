@@ -1,14 +1,15 @@
-import { Component, effect, inject } from '@angular/core';
+import { Component, RESPONSE_INIT, computed, effect, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Meta, Title } from '@angular/platform-browser';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { map, switchMap } from 'rxjs';
 import { PortfolioApiService } from '../data/portfolio-api.service';
 import { NotFound } from './not-found';
+import { PortfolioCaseStudy } from './portfolio-case-study';
 
 @Component({
   selector: 'app-project-detail',
-  imports: [RouterLink, NotFound],
+  imports: [RouterLink, NotFound, PortfolioCaseStudy],
   template: `
     @if (project() === undefined) {
       <p class="loading" role="status">Cargando proyecto…</p>
@@ -29,12 +30,15 @@ import { NotFound } from './not-found';
               >Ver repositorio en GitHub <span aria-hidden="true">↗</span></a
             >
           }
+          @if (project.slug === 'secure-portfolio-infrastructure') {
+            <p><a class="back-link" href="#case-story-title">Ir al análisis técnico ↓</a></p>
+          }
         </header>
 
         <div class="detail-layout">
           <div class="detail-content">
             <section class="detail-section" aria-labelledby="objective-title">
-              <p class="section-number">01</p>
+              <p class="section-number">{{ sectionNumbers().objective }}</p>
               <div>
                 <h2 id="objective-title">Objetivo</h2>
                 <p>{{ project.objective }}</p>
@@ -43,7 +47,7 @@ import { NotFound } from './not-found';
 
             @if (project.architecture?.length) {
               <section class="detail-section" aria-labelledby="architecture-title">
-                <p class="section-number">02</p>
+                <p class="section-number">{{ sectionNumbers().architecture }}</p>
                 <div>
                   <h2 id="architecture-title">Arquitectura</h2>
                   <ol class="architecture-flow">
@@ -65,7 +69,7 @@ import { NotFound } from './not-found';
 
             @if (project.workPerformed?.length) {
               <section class="detail-section" aria-labelledby="work-title">
-                <p class="section-number">03</p>
+                <p class="section-number">{{ sectionNumbers().work }}</p>
                 <div>
                   <h2 id="work-title">Trabajo realizado</h2>
                   <ul class="check-list">
@@ -79,7 +83,7 @@ import { NotFound } from './not-found';
 
             @if (project.confirmedResults?.length) {
               <section class="detail-section confirmed-section" aria-labelledby="results-title">
-                <p class="section-number">04</p>
+                <p class="section-number">{{ sectionNumbers().results }}</p>
                 <div>
                   <h2 id="results-title">Resultados confirmados</h2>
                   <ul class="check-list">
@@ -99,7 +103,7 @@ import { NotFound } from './not-found';
 
             @if (project.problems?.length) {
               <section class="detail-section" aria-labelledby="problems-title">
-                <p class="section-number">05</p>
+                <p class="section-number">{{ sectionNumbers().problems }}</p>
                 <div>
                   <h2 id="problems-title">Problemas encontrados</h2>
                   <div class="stack">
@@ -116,7 +120,7 @@ import { NotFound } from './not-found';
 
             @if (project.lessons?.length) {
               <section class="detail-section" aria-labelledby="lessons-title">
-                <p class="section-number">06</p>
+                <p class="section-number">{{ sectionNumbers().lessons }}</p>
                 <div>
                   <h2 id="lessons-title">Aprendizajes</h2>
                   <ul class="check-list">
@@ -130,7 +134,7 @@ import { NotFound } from './not-found';
 
             @if (project.roadmap; as roadmap) {
               <section class="detail-section" aria-labelledby="roadmap-title">
-                <p class="section-number">07</p>
+                <p class="section-number">{{ sectionNumbers().roadmap }}</p>
                 <div>
                   <h2 id="roadmap-title">Estado del proyecto</h2>
                   <p class="scope-note">
@@ -147,8 +151,8 @@ import { NotFound } from './not-found';
                       </ul>
                     </section>
                     <section class="roadmap-column progress" aria-labelledby="progress-title">
-                      <p class="roadmap-label">In progress</p>
-                      <h3 id="progress-title">En curso</h3>
+                      <p class="roadmap-label">{{ project.slug === 'secure-portfolio-infrastructure' ? 'Next' : 'In progress' }}</p>
+                      <h3 id="progress-title">{{ project.slug === 'secure-portfolio-infrastructure' ? 'Siguiente hito' : 'En curso' }}</h3>
                       <ul>
                         @for (item of roadmap.inProgress; track item) {
                           <li>{{ item }}</li>
@@ -171,7 +175,7 @@ import { NotFound } from './not-found';
 
             @if (project.documentationStatus?.length) {
               <section class="detail-section documentation-section" aria-labelledby="docs-title">
-                <p class="section-number">08</p>
+                <p class="section-number">{{ sectionNumbers().documentation }}</p>
                 <div>
                   <h2 id="docs-title">Documentación en revisión</h2>
                   <ul class="plain-list">
@@ -204,6 +208,9 @@ import { NotFound } from './not-found';
           </aside>
         </div>
       </article>
+      @if (project.slug === 'secure-portfolio-infrastructure') {
+        <app-portfolio-case-study />
+      }
     } @else {
       <app-not-found />
     }
@@ -214,6 +221,7 @@ export class ProjectDetail {
   private readonly portfolioApi = inject(PortfolioApiService);
   private readonly title = inject(Title);
   private readonly meta = inject(Meta);
+  private readonly responseInit = inject(RESPONSE_INIT, { optional: true });
 
   protected readonly project = toSignal(
     this.route.paramMap.pipe(
@@ -222,6 +230,23 @@ export class ProjectDetail {
     ),
   );
 
+  protected readonly sectionNumbers = computed(() => {
+    const project = this.project();
+    let count = 0;
+    const next = (shown: boolean) => (shown ? String(++count).padStart(2, '0') : '');
+
+    return {
+      objective: next(!!project),
+      architecture: next(!!project?.architecture?.length),
+      work: next(!!project?.workPerformed?.length),
+      results: next(!!project?.confirmedResults?.length),
+      problems: next(!!project?.problems?.length),
+      lessons: next(!!project?.lessons?.length),
+      roadmap: next(!!project?.roadmap),
+      documentation: next(!!project?.documentationStatus?.length),
+    };
+  });
+
   constructor() {
     effect(() => {
       const project = this.project();
@@ -229,6 +254,8 @@ export class ProjectDetail {
       if (project) {
         this.title.setTitle(`${project.cardTitle} | Alejandro Peña`);
         this.meta.updateTag({ name: 'description', content: project.summary });
+      } else if (project === null && this.responseInit) {
+        this.responseInit.status = 404;
       }
     });
   }
