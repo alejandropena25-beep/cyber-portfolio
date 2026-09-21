@@ -77,7 +77,7 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<void> {
     const config = authConfig();
-    await this.authService.logout(cookies(request)[config.sessionCookie]);
+    await this.authService.logout(cookies(request).get(config.sessionCookie));
     const options = {
       sameSite: "strict" as const,
       secure: config.secureCookie,

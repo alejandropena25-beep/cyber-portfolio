@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { evaluateAudit, validateBaseline } from "./security-audit.mjs";
+import { evaluateAudit, runAudit, validateBaseline } from "./security-audit.mjs";
 
 const exception = {
   project: "backend",
@@ -270,4 +270,89 @@ test("a missing string-valued via target fails closed", () => {
       }),
     /references missing package/,
   );
+});
+
+function auditResponse(body, status = 1) {
+  return { status, stdout: JSON.stringify(body), stderr: "" };
+}
+
+test("transient audit failure retries and the recovered findings are evaluated", () => {
+  const attempts = [];
+  const delays = [];
+  const responses = [
+    auditResponse({ error: { code: "ECONNRESET", summary: "read ECONNRESET" } }),
+    auditResponse(report()),
+  ];
+  const recovered = runAudit("backend", {
+    execute: () => {
+      attempts.push(1);
+      return responses.shift();
+    },
+    wait: (delay) => delays.push(delay),
+  });
+  assert.equal(attempts.length, 2);
+  assert.deepEqual(delays, [250]);
+  const result = evaluateAudit({ project: "backend", report: recovered, lockfile, exceptions: [] });
+  assert.match(result.errors[0], /UNAPPROVED HIGH/);
+});
+
+test("persistent transient audit failure blocks after three attempts", () => {
+  let attempts = 0;
+  assert.throws(
+    () => runAudit("backend", {
+      execute: () => {
+        attempts++;
+        return auditResponse({ error: { code: "ETIMEDOUT" } });
+      },
+      wait: () => {},
+    }),
+    /ETIMEDOUT after 3 attempts/,
+  );
+  assert.equal(attempts, 3);
+});
+
+test("a transport error reported only on stderr also retries", () => {
+  let attempts = 0;
+  const valid = runAudit("backend", {
+    execute: () => {
+      attempts++;
+      return attempts === 1
+        ? { status: 1, stdout: "", stderr: "npm audit request failed: read ECONNRESET\n" }
+        : auditResponse(report());
+    },
+    wait: () => {},
+  });
+  assert.equal(attempts, 2);
+  assert.equal(valid.auditReportVersion, 2);
+});
+
+test("valid audit with a new high finding is evaluated without retry", () => {
+  let attempts = 0;
+  const valid = runAudit("backend", {
+    execute: () => {
+      attempts++;
+      return auditResponse(report());
+    },
+    wait: () => assert.fail("A valid audit must not retry"),
+  });
+  assert.equal(attempts, 1);
+  assert.match(
+    evaluateAudit({ project: "backend", report: valid, lockfile, exceptions: [] }).errors[0],
+    /UNAPPROVED HIGH/,
+  );
+});
+
+test("malformed non-network audit output fails without retry", () => {
+  let attempts = 0;
+  assert.throws(
+    () => runAudit("backend", {
+      execute: () => {
+        attempts++;
+        return { status: 1, stdout: "{not json", stderr: "" };
+      },
+      wait: () => assert.fail("Malformed data must not retry"),
+    }),
+    SyntaxError,
+  );
+  assert.equal(attempts, 1);
 });

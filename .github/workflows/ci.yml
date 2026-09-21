@@ -36,6 +36,7 @@ jobs:
           git show --format= --check HEAD
           git diff --check
           node --check scripts/ci/compose-smoke.mjs
+          node --check scripts/ci/ssr-content.mjs
           node --check scripts/ci/container-security.mjs
           node --check scripts/ci/security-audit.mjs
           node --check scripts/ci/workflow-security.test.mjs
@@ -84,6 +85,7 @@ jobs:
         run: >-
           node --test
           scripts/ci/security-audit.test.mjs
+          scripts/ci/ssr-content.test.mjs
           scripts/ci/container-security.test.mjs
           scripts/ci/workflow-security.test.mjs
       - name: Audit both npm lockfiles against the expiring policy
@@ -164,6 +166,8 @@ jobs:
         run: npm ci
       - name: Generate Linux Prisma Client and build NestJS
         run: npm run build
+      - name: Test authentication helpers
+        run: npm run test:unit
       - name: Migrate disposable database and run all PostgreSQL e2e tests
         run: npm test
 

@@ -31,7 +31,7 @@ Para reproducir el smoke con Docker activo y Node 24, desde la raíz:
 
 ```powershell
 node --test backend/test/database-safety.test.cjs
-node --test scripts/ci/security-audit.test.mjs scripts/ci/container-security.test.mjs scripts/ci/workflow-security.test.mjs
+node --test scripts/ci/security-audit.test.mjs scripts/ci/ssr-content.test.mjs scripts/ci/container-security.test.mjs scripts/ci/workflow-security.test.mjs
 node scripts/ci/security-audit.mjs
 node scripts/ci/compose-smoke.mjs
 ```

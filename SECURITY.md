@@ -36,6 +36,8 @@ The following remain visible warnings during the initial Phase 8 baseline:
 - the four exact critical container exceptions documented below until their mandatory review expires;
 - medium/informational Dockerfile or supported IaC configuration findings.
 
+`npm audit` retries a recognized temporary registry/transport error up to three times with bounded backoff. A valid vulnerability report is evaluated immediately; malformed data, unrecognized errors and exhausted retries block. No network error changes the severity policy.
+
 CodeQL uploads findings to GitHub code scanning, and publication waits for successful CodeQL execution. A successful analysis job does not mean that no high/critical alerts exist. Enforcing severity-based merge blocking requires a repository-side GitHub Code Scanning ruleset plus protected pull-request-only updates to `main`; both settings require remote verification.
 
 ## Reviewed container criticals
@@ -69,6 +71,8 @@ False positives require evidence showing why the detector is wrong. Prefer the d
 ## Dependency and image maintenance
 
 Dependabot proposes weekly npm, Docker and GitHub Actions updates without automatic merging. Major Angular and Prisma changes remain separate, reviewable updates and must pass the complete pipeline. Do not use `npm audit fix --force`, downgrade Prisma, or add speculative overrides to silence findings.
+
+The open `mysql2@3.15.3` HIGH (`GHSA-3f6p-5ww8-9rcr`) is patched in mysql2 3.22.0; the separate MODERATE (`GHSA-rgwj-5xj2-c3m3`) is patched in 3.23.1. Prisma 7.10.0 pins mysql2 to exactly 3.15.3 in its CLI dependency graph. This application uses PostgreSQL and does not exercise the affected MySQL authentication or compression paths, but the installed package and Dependabot alert remain open and visible under the exact exception expiring 2026-10-20. The suggested Prisma 6 downgrade is rejected. An npm override can replace the installed package technically, but no upstream compatibility assurance was found for that substitution, and npm installation alone cannot establish CLI compatibility; no override was applied. Reassess when a compatible supported Prisma release removes the vulnerable pin, then validate the full backend and image chain and remove the exception.
 
 Generated SBOMs and complete Trivy JSON reports are CI artifacts, not committed source. The current reports were checked for embedded credentials before retention; Trivy reports are not automatically sanitized, so image metadata must be reviewed if image build configuration changes. Each SBOM carries machine-readable component, source-reference and Docker image-ID properties. The publication manifest carries the same IDs, and publication fails if the IDs after `docker load` differ. These artifacts are evidence, not proof that an image is vulnerability-free.
 

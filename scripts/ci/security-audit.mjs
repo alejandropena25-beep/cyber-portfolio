@@ -8,6 +8,22 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const baselinePath = join(root, "scripts/ci/npm-audit-baseline.json");
 const projects = ["backend", "frontend"];
 const acceptedSeverities = new Set(["high", "moderate", "low"]);
+const transientAuditCodes = new Set([
+  "ECONNRESET",
+  "ETIMEDOUT",
+  "EAI_AGAIN",
+  "ECONNREFUSED",
+  "ENETUNREACH",
+  "EHOSTUNREACH",
+  "E502",
+  "E503",
+  "E504",
+]);
+const maxAuditAttempts = 3;
+
+function pause(milliseconds) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
+}
 
 function requireText(value, field) {
   assert.equal(typeof value, "string", `${field} must be a string`);
@@ -217,7 +233,8 @@ export function evaluateAudit({ project, report, lockfile, exceptions }) {
   return { errors, warnings, findings, matched };
 }
 
-function runAudit(project) {
+export function runAudit(project, { execute = spawnSync, wait = pause } = {}) {
+  assert.ok(projects.includes(project), `Unknown project ${project}`);
   const windowsCli = join(
     dirname(process.execPath),
     "node_modules/npm/bin/npm-cli.js",
@@ -229,19 +246,47 @@ function runAudit(project) {
       : ["audit", "--json"];
   if (process.platform === "win32")
     assert.ok(existsSync(windowsCli), "Cannot locate npm CLI");
-  const result = spawnSync(command, args, {
-    cwd: join(root, project),
-    encoding: "utf8",
-    windowsHide: true,
-  });
-  if (result.error) throw result.error;
-  if (result.stderr.trim()) process.stderr.write(result.stderr);
-  assert.ok(result.stdout.trim(), `${project}: npm audit returned no JSON`);
-  console.log(`\n===== ${project}: complete npm audit JSON =====`);
-  process.stdout.write(
-    result.stdout.endsWith("\n") ? result.stdout : `${result.stdout}\n`,
-  );
-  return JSON.parse(result.stdout);
+  for (let attempt = 1; attempt <= maxAuditAttempts; attempt++) {
+    const result = execute(command, args, {
+      cwd: join(root, project),
+      encoding: "utf8",
+      windowsHide: true,
+    });
+    if (result.stderr?.trim()) process.stderr.write(result.stderr);
+    let report;
+    let parseError;
+    if (result.stdout?.trim()) {
+      try {
+        report = JSON.parse(result.stdout);
+      } catch (error) {
+        parseError = error;
+      }
+    }
+    const code =
+      result.error?.code ??
+      report?.error?.code ??
+      [...transientAuditCodes].find((item) => result.stderr?.includes(item));
+    if (
+      result.status !== 0 &&
+      report?.auditReportVersion === undefined &&
+      transientAuditCodes.has(code)
+    ) {
+      if (attempt === maxAuditAttempts)
+        throw new Error(`${project}: npm audit transport error ${code} after ${attempt} attempts`);
+      console.warn(`${project}: npm audit transport error ${code}; retrying (${attempt}/${maxAuditAttempts}).`);
+      wait(250 * attempt);
+      continue;
+    }
+    if (parseError) throw parseError;
+    if (result.error) throw result.error;
+    assert.ok(result.stdout?.trim(), `${project}: npm audit returned no JSON`);
+    assert.equal(report?.auditReportVersion, 2, `${project}: npm audit returned no valid report`);
+    console.log(`\n===== ${project}: complete npm audit JSON =====`);
+    process.stdout.write(
+      result.stdout.endsWith("\n") ? result.stdout : `${result.stdout}\n`,
+    );
+    return report;
+  }
 }
 
 function loadJson(path) {

@@ -17,11 +17,11 @@ export class CsrfGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<Request>();
     if (["GET", "HEAD", "OPTIONS"].includes(request.method)) return true;
     const values = cookies(request);
-    const sessionToken = values[authConfig().sessionCookie];
+    const sessionToken = values.get(authConfig().sessionCookie);
     if (!sessionToken) return true;
     const session = await this.authService.authenticate(sessionToken);
     const header = request.headers["x-xsrf-token"];
-    const cookie = values[authConfig().csrfCookie];
+    const cookie = values.get(authConfig().csrfCookie);
     if (
       !session ||
       typeof header !== "string" ||
